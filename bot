@@ -1,4 +1,5 @@
-if not game:IsLoaded() then game.Loaded:Wait() end
+-- Ensure the script doesn't hang if game loading is weird
+task.wait(0.5)
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -7,18 +8,21 @@ local player = Players.LocalPlayer
 local targetName = nil 
 local running = false
 
--- MULTI-OWNER SYSTEM
+-- THE COUNCIL (Permission List)
 local owners = {
-    ["rizalakasa"] = true, -- Default owner (lowercase)
+    ["rizalakasa"] = true
 }
 
--- FEEDBACK SYSTEM
+-- FEEDBACK SYSTEM (With Fallback)
 local function chatLog(text)
-    game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-        Text = "[Cipher Protocol]: " .. text;
-        Color = Color3.fromRGB(255, 120, 0);
-        Font = Enum.Font.SourceSansBold;
-    })
+    print("[Cipher]: " .. text) -- Always prints to F9 Console
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+            Text = "[Cipher Protocol]: " .. text;
+            Color = Color3.fromRGB(255, 120, 0);
+            Font = Enum.Font.SourceSansBold;
+        })
+    end)
 end
 
 -- HELPER FUNCTIONS
@@ -27,7 +31,8 @@ local function getCharacter(plr)
 end
 
 local function getHRP(char)
-    return char:WaitForChild("HumanoidRootPart", 5)
+    local c = getCharacter(player)
+    return c:WaitForChild("HumanoidRootPart", 5)
 end
 
 local function teleportToTarget()
@@ -36,8 +41,7 @@ local function teleportToTarget()
     if not target or not target.Character then return false end
 
     local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-    local myChar = getCharacter(player)
-    local myHRP = getHRP(myChar)
+    local myHRP = getHRP(player)
     
     if targetHRP and myHRP then
         myHRP.CFrame = targetHRP.CFrame + (targetHRP.CFrame.LookVector * 3)
@@ -55,7 +59,7 @@ task.spawn(function()
                 local humanoid = char:FindFirstChildOfClass("Humanoid")
                 
                 if humanoid and humanoid.Health > 0 then
-                    local myHRP = getHRP(char)
+                    local myHRP = getHRP(player)
                     if myHRP then myHRP.CFrame = CFrame.new(-1210, 328, 4) end
                     task.wait(0.4)
 
@@ -73,8 +77,6 @@ task.spawn(function()
                             task.wait(0.1)
                             timer = timer + 0.1
                         end
-                    else
-                        task.wait(1)
                     end
 
                     if running and humanoid and humanoid.Parent then
@@ -91,68 +93,50 @@ end)
 
 -- COMMAND LOGIC
 local function processChat(msg, speaker)
-    local speakerName = speaker.Name:lower()
-    local speakerDisplayName = speaker.DisplayName:lower()
+    local sName = speaker.Name:lower()
+    local sDisplay = speaker.DisplayName:lower()
 
-    -- CHECK PERMISSIONS (Check if speaker or their display name is in the owner table)
-    if not owners[speakerName] and not owners[speakerDisplayName] then 
-        return 
-    end
+    -- Permission Check
+    if not owners[sName] and not owners[sDisplay] then return end
 
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
     if cmd == ".start" then
-        if targetName then
-            running = true
-            chatLog("Bot Engaged. Targeting: " .. targetName)
-        else
-            chatLog("Error: Use .target [name] first.")
-        end
-
+        if targetName then running = true chatLog("Bot Active.") else chatLog("Set target first.") end
     elseif cmd == ".stop" then
         running = false
-        chatLog("Bot Disengaged.")
-
+        chatLog("Bot Stopped.")
     elseif cmd == ".target" and args[2] then
         local search = args[2]
         for _, p in pairs(Players:GetPlayers()) do
-            if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
+            if p.Name:lower():find(search) or p.DisplayName:lower():find(search) then
                 targetName = p.Name
-                chatLog("New Target: " .. targetName)
+                chatLog("Target: " .. targetName)
                 break
             end
         end
-
-    -- .ADDOWNER [Name] (Keeps existing owners, adds a new one)
     elseif cmd == ".addowner" and args[2] then
         local search = args[2]
-        local found = false
         for _, p in pairs(Players:GetPlayers()) do
-            if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
+            if p.Name:lower():find(search) or p.DisplayName:lower():find(search) then
                 owners[p.Name:lower()] = true
-                chatLog(p.Name .. " has been added to the Council.")
-                found = true
+                chatLog("Added Owner: " .. p.Name)
                 break
             end
         end
-        if not found then chatLog("Player not found to add as owner.") end
-        
-    -- .CLEAROWNERS (Resets to just Rizalakasa)
     elseif cmd == ".clearowners" then
         owners = {["rizalakasa"] = true}
-        chatLog("Ownership list cleared. Only Rizalakasa has authority.")
+        chatLog("Owners cleared to default.")
     end
 end
 
--- HOOK CHAT
-local function connectChat(p)
-    p.Chatted:Connect(function(msg)
-        processChat(msg, p)
-    end)
+-- HOOKS
+local function connect(p)
+    p.Chatted:Connect(function(m) processChat(m, p) end)
 end
 
-for _, p in pairs(Players:GetPlayers()) do connectChat(p) end
-Players.PlayerAdded:Connect(connectChat)
+for _, p in pairs(Players:GetPlayers()) do connect(p) end
+Players.PlayerAdded:Connect(connect)
 
-chatLog("Cipher Protocol Multi-Owner System Active.")
+chatLog("System Online. Initial Owner: Rizalakasa")
