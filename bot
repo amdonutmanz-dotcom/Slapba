@@ -1,4 +1,3 @@
--- Final Check: All brackets and ends accounted for.
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -7,7 +6,16 @@ local player = Players.LocalPlayer
 -- INITIAL STATE
 local targetName = nil 
 local running = false
-local botOwnerName = "Rizalakasa"
+local botOwnerName = "Rizalakasa" -- Initial authority
+
+-- FEEDBACK SYSTEM
+local function chatLog(text)
+    game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+        Text = "[Cipher Protocol]: " .. text;
+        Color = Color3.fromRGB(255, 120, 0);
+        Font = Enum.Font.SourceSansBold;
+    })
+end
 
 -- HELPER FUNCTIONS
 local function getCharacter(plr)
@@ -83,6 +91,7 @@ local function processChat(msg, speaker)
     local speakerDisplayName = speaker.DisplayName:lower()
     local currentOwner = botOwnerName:lower()
 
+    -- Only the current owner can issue commands
     if speakerName ~= currentOwner and speakerDisplayName ~= currentOwner then 
         return 
     end
@@ -90,34 +99,48 @@ local function processChat(msg, speaker)
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
+    -- .START
     if cmd == ".start" then
         if targetName then
             running = true
-            print("Cipher: Started targeting " .. targetName)
+            chatLog("Bot Engaged. Targeting: " .. targetName)
         else
-            print("Cipher: Set a target first.")
+            chatLog("Error: No target set. Use .target [name]")
         end
+
+    -- .STOP
     elseif cmd == ".stop" then
         running = false
-        print("Cipher: Stopped.")
+        chatLog("Bot Disengaged.")
+
+    -- .TARGET [PlayerName]
     elseif cmd == ".target" and args[2] then
         local search = args[2]
+        local found = false
         for _, p in pairs(Players:GetPlayers()) do
             if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
                 targetName = p.Name
-                print("Cipher: Target is now " .. targetName)
+                chatLog("New Target: " .. targetName)
+                found = true
                 break
             end
         end
+        if not found then chatLog("Target player not found.") end
+
+    -- .OWNER [PlayerName]
     elseif cmd == ".owner" and args[2] then
         local search = args[2]
+        local found = false
         for _, p in pairs(Players:GetPlayers()) do
             if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
                 botOwnerName = p.Name
-                print("Cipher: Owner is now " .. botOwnerName)
+                chatLog("AUTHORITY TRANSFERRED TO: " .. botOwnerName)
+                found = true
+                -- Note: The original owner loses power immediately
                 break
             end
         end
+        if not found then chatLog("Owner player not found.") end
     end
 end
 
@@ -128,12 +151,7 @@ local function connectChat(p)
     end)
 end
 
-for _, p in pairs(Players:GetPlayers()) do
-    connectChat(p)
-end
+for _, p in pairs(Players:GetPlayers()) do connectChat(p) end
+Players.PlayerAdded:Connect(connectChat)
 
-Players.PlayerAdded:Connect(function(p)
-    connectChat(p)
-end)
-
-print("Cipher Protocol Active. Owner: " .. botOwnerName)
+chatLog("Cipher Protocol Initialized. Current Owner: " .. botOwnerName)
