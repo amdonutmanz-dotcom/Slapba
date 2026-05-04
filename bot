@@ -67,7 +67,7 @@ task.spawn(function()
                 if humanoid and humanoid.Health > 0 then
                     local myHRP = getHRP(char)
                     if myHRP then myHRP.CFrame = CFrame.new(-1210, 328, 4) end
-                    task.wait(0.4)
+                    task.wait(0.6)
 
                     if smiting then return end
 
