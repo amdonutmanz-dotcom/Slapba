@@ -7,7 +7,6 @@ local player = Players.LocalPlayer
 -- INITIAL STATE
 local targetName = nil 
 local running = false
--- Changed to a table to support multiple owners
 local owners = {
     ["rizalakasa"] = true
 }
@@ -19,6 +18,26 @@ end
 
 local function getHRP(char)
     return char:WaitForChild("HumanoidRootPart", 5)
+end
+
+-- FLING LOGIC
+local function setFling(state)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    if state then
+        -- High velocity logic for "WalkFling"
+        local bV = Instance.new("BodyAngularVelocity")
+        bV.Name = "CipherFling"
+        bV.AngularVelocity = Vector3.new(0, 99999, 0)
+        bV.MaxTorque = Vector3.new(0, math.huge, 0)
+        bV.P = math.huge
+        bV.Parent = hrp
+    else
+        local existing = hrp:FindFirstChild("CipherFling")
+        if existing then existing:Destroy() end
+    end
 end
 
 local function teleportToTarget()
@@ -85,7 +104,6 @@ local function processChat(msg, speaker)
     local speakerName = speaker.Name:lower()
     local speakerDisplayName = speaker.DisplayName:lower()
 
-    -- Check if the person talking is an owner
     if not owners[speakerName] and not owners[speakerDisplayName] then 
         return 
     end
@@ -112,7 +130,6 @@ local function processChat(msg, speaker)
                 break
             end
         end
-    -- NEW COMMAND: .addowner [name]
     elseif cmd == ".addowner" and args[2] then
         local search = args[2]
         for _, p in pairs(Players:GetPlayers()) do
@@ -126,11 +143,49 @@ local function processChat(msg, speaker)
         local search = args[2]
         for _, p in pairs(Players:GetPlayers()) do
             if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
-                -- This still resets the list to just one person
                 owners = {[p.Name:lower()] = true}
                 print("Cipher: Owner is now " .. p.Name)
                 break
             end
+        end
+    
+    -- NEW COMMAND: .smite [user]
+    elseif cmd == ".smite" and args[2] then
+        local search = args[2]
+        local smiteTarget = nil
+        
+        for _, p in pairs(Players:GetPlayers()) do
+            if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
+                smiteTarget = p
+                break
+            end
+        end
+        
+        if smiteTarget and smiteTarget.Character then
+            task.spawn(function()
+                local char = player.Character
+                local myHRP = getHRP(char)
+                local targetHRP = smiteTarget.Character:FindFirstChild("HumanoidRootPart")
+                
+                if myHRP and targetHRP then
+                    local originalPos = myHRP.CFrame
+                    print("Cipher: Smiting " .. smiteTarget.Name)
+                    
+                    setFling(true)
+                    -- Stick to target for 4 seconds
+                    local endTime = tick() + 4
+                    while tick() < endTime do
+                        if targetHRP and targetHRP.Parent then
+                            myHRP.CFrame = targetHRP.CFrame
+                        end
+                        task.wait()
+                    end
+                    
+                    setFling(false)
+                    myHRP.CFrame = originalPos
+                    print("Cipher: Smite complete.")
+                end
+            end)
         end
     end
 end
@@ -142,12 +197,7 @@ local function connectChat(p)
     end)
 end
 
-for _, p in pairs(Players:GetPlayers()) do
-    connectChat(p)
-end
-
-Players.PlayerAdded:Connect(function(p)
-    connectChat(p)
-end)
+for _, p in pairs(Players:GetPlayers()) do connectChat(p) end
+Players.PlayerAdded:Connect(connectChat)
 
 print("Cipher Protocol Active. Initial Owner: Rizalakasa")
