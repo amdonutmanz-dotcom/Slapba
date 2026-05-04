@@ -1,4 +1,4 @@
--- Cipher Protocol: Management Suite Restored
+-- Cipher Protocol: Unified Farm & Management Suite
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -21,6 +21,7 @@ end
 local function forceReset(hum, char)
     if not hum or not char then return end
     pcall(function()
+        -- Breaking the neck joint is the most effective way to force a respawn
         local head = char:FindFirstChild("Head")
         if head and head:FindFirstChildOfClass("Motor6D") then
             head:FindFirstChildOfClass("Motor6D"):Destroy()
@@ -29,19 +30,83 @@ local function forceReset(hum, char)
     end)
 end
 
+local function getTargetHRP()
+    if not targetName then return nil end
+    local target = Players:FindFirstChild(targetName)
+    if target and target.Character then
+        return target.Character:FindFirstChild("HumanoidRootPart")
+    end
+    return nil
+end
+
+-- MAIN FARM LOOP
+task.spawn(function()
+    while true do
+        if running and targetName and not smiting then
+            pcall(function()
+                local char = player.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+                if hum and hum.Health > 0 and hrp then
+                    -- 1. Teleport to Lobby Wait Spot
+                    hrp.CFrame = CFrame.new(-1210, 328, -8)
+                    task.wait(0.3)
+
+                    -- 2. Teleport In Front of Target
+                    local tHRP = getTargetHRP()
+                    if tHRP then
+                        char:PivotTo(tHRP.CFrame * CFrame.new(0, 0, -3))
+                        
+                        -- 3. Wait for Ragdoll Value
+                        local ragdolled = workspace:FindFirstChild("bp1frms") and workspace.bp1frms:FindFirstChild("Ragdolled")
+                        if ragdolled then
+                            local startWait = tick()
+                            -- Wait for ragdoll to be true (with a 5s timeout)
+                            while running and not ragdolled.Value and tick() - startWait < 5 do
+                                task.wait(0.1)
+                            end
+                            
+                            -- 4. Effective Reset
+                            if ragdolled.Value then
+                                forceReset(hum, char)
+                                player.CharacterAdded:Wait()
+                                task.wait(0.5)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        task.wait(0.1)
+    end
+end)
+
 -- COMMAND LOGIC
 local function processChat(msg, speaker)
     local sName = speaker.Name:lower()
     local sDisplay = speaker.DisplayName:lower()
 
-    -- Authority Check
     if not owners[sName] and not owners[sDisplay] then return end
 
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
-    -- 1. Management Commands
-    if cmd == ".addowner" and args[2] then
+    if cmd == ".farm" then
+        running = true 
+        chatLog("Farm Loop Started.")
+    elseif cmd == ".stop" then
+        running = false 
+        chatLog("Farm Loop Stopped.")
+    elseif cmd == ".target" and args[2] then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
+                targetName = p.Name
+                chatLog("Target Locked: " .. targetName)
+                break
+            end
+        end
+    elseif cmd == ".addowner" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 owners[p.Name:lower()] = true
@@ -49,7 +114,6 @@ local function processChat(msg, speaker)
                 break
             end
         end
-
     elseif cmd == ".removeowner" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
@@ -62,35 +126,12 @@ local function processChat(msg, speaker)
                 break
             end
         end
-
     elseif cmd == ".reset" then
-        chatLog("Manually Resetting...")
-        local char = player.Character
-        forceReset(char:FindFirstChildOfClass("Humanoid"), char)
-
-    elseif cmd == ".rejoin" or cmd == ".rj" then
-        chatLog("Rejoining Server...")
+        chatLog("Resetting...")
+        forceReset(player.Character:FindFirstChildOfClass("Humanoid"), player.Character)
+    elseif cmd == ".rj" or cmd == ".rejoin" then
+        chatLog("Rejoining...")
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
-
-    -- 2. Target Logic (Preserved)
-    elseif cmd == ".target" and args[2] then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
-                targetName = p.Name
-                chatLog("Locked Target: " .. targetName)
-                break
-            end
-        end
-
-    -- 3. Loop Control (Awaiting Redo)
-    elseif cmd == ".start" then
-        running = true 
-        chatLog("Start command received. Awaiting logic redo...")
-    elseif cmd == ".stop" then
-        running = false 
-        chatLog("Loop Paused.")
-
-    -- 4. Smite Logic (Preserved)
     elseif cmd == ".smite" and args[2] then
         local smiteTarget = nil
         for _, p in pairs(Players:GetPlayers()) do
@@ -128,7 +169,7 @@ local function processChat(msg, speaker)
                     hrp.Velocity = Vector3.zero
                     char:PivotTo(originalPos)
                     smiting = false
-                    chatLog("Smite Concluded.")
+                    chatLog("Smite Done.")
                 else
                     smiting = false
                 end
@@ -145,4 +186,4 @@ Players.PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(m) processChat(m, p) end)
 end)
 
-chatLog("Cipher Ready. Utility & Target Logic Online.")
+chatLog("Cipher Active. Target-Response Farm Loaded.")
