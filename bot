@@ -1,4 +1,4 @@
--- Cipher Protocol: Utility Expansion Patch (Distance-Validated)
+-- Cipher Protocol: Utility Expansion Patch (Part-Based Validation)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -50,7 +50,8 @@ local function teleportToTarget()
     local myHRP = getHRP(myChar)
     
     if targetHRP and myHRP then
-        myHRP.CFrame = targetHRP.CFrame + (targetHRP.CFrame.LookVector * 3)
+        -- Teleport 3 studs behind the player based on their look direction
+        myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
         return true
     end
     return false
@@ -66,15 +67,21 @@ task.spawn(function()
                 
                 if humanoid and humanoid.Health > 0 then
                     local myHRP = getHRP(char)
-                    if myHRP then 
-                        local portalPos = Vector3.new(-1210, 328, 4)
-                        myHRP.CFrame = CFrame.new(portalPos) 
+                    local portalPart = workspace:FindFirstChild("Lobby") and workspace.Lobby:FindFirstChild("Teleport1")
+
+                    if myHRP and portalPart then 
+                        local preTeleportPos = myHRP.Position
+                        myHRP.CFrame = portalPart.CFrame 
                         
-                        -- VALIDATION: Wait until the portal actually teleports us
+                        -- VALIDATION: Wait until the portal actually moves us (10 stud delta)
                         local startTick = tick()
                         repeat 
-                            task.wait(0.1)
-                        until (myHRP.Position - portalPos).Magnitude > 10 or tick() - startTick > 3 or not running
+                            task.wait(0.05)
+                        until (myHRP.Position - preTeleportPos).Magnitude > 10 or tick() - startTick > 3 or not running
+                    elseif myHRP and not portalPart then
+                        -- Fallback to original coords if the part isn't found
+                        myHRP.CFrame = CFrame.new(-1210, 328, 4)
+                        task.wait(0.4)
                     end
 
                     if smiting or not running then return end
@@ -239,4 +246,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do connect(p) end
 Players.PlayerAdded:Connect(connect)
 
-chatLog("Cipher Active. Distance Validation Enabled.")
+chatLog("Cipher Active. MeshPart-Targeting Initialized.")
