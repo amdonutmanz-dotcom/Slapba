@@ -160,7 +160,7 @@ local function processChat(msg, speaker)
                             -- AGGRESSIVE PREDICTION MATH:
                             -- Uses Velocity instead of MoveDirection for zero-delay tracking
                             -- Multiplier set to 0.22 (roughly 220ms lead)
-                            local prediction = tHRP.Velocity * 0.22
+                            local prediction = tHRP.Velocity * 0.3
                             
                             -- If they aren't moving, stay centered. If they are, lead them.
                             if tHRP.Velocity.Magnitude < 1 then
