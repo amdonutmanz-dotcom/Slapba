@@ -1,5 +1,4 @@
--- NO WAITS AT THE TOP - RUN IMMEDIATELY
-print("CIPHER DEBUG: SCRIPT EXECUTING") 
+print("CIPHER: Precision Slap Protocol Loading...")
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -9,7 +8,7 @@ local targetName = nil
 local running = false
 local owners = {
     ["rizalakasa"] = true,
-    [player.Name:lower()] = true -- Adding you by default just to be safe
+    [player.Name:lower()] = true
 }
 
 -- FEEDBACK SYSTEM
@@ -39,7 +38,9 @@ local function teleportToTarget()
     local myHRP = getHRP(player)
     
     if targetHRP and myHRP then
-        myHRP.CFrame = targetHRP.CFrame + (targetHRP.CFrame.LookVector * 3)
+        -- Teleport slightly closer and reset velocity to prevent sliding
+        myHRP.Velocity = Vector3.new(0,0,0)
+        myHRP.CFrame = targetHRP.CFrame + (targetHRP.CFrame.LookVector * 2.5)
         return true
     end
     return false
@@ -49,38 +50,57 @@ end
 task.spawn(function()
     while true do
         if running and targetName then
-            local char = player.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            local hrp = getHRP(player)
-            
-            if hum and hrp and hum.Health > 0 then
-                -- STEP 1
-                hrp.CFrame = CFrame.new(-1210, 328, 4)
-                task.wait(0.4)
+            pcall(function()
+                local char = player.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                local hrp = getHRP(player)
+                
+                if hum and hrp and hum.Health > 0 then
+                    -- STEP 1: TRAVEL TO PREP
+                    hrp.CFrame = CFrame.new(-1210, 328, 4)
+                    task.wait(0.5) -- Increased prep wait
 
-                -- STEP 2
-                for i = 1, 5 do
-                    if not running or teleportToTarget() then break end
-                    task.wait(0.2)
-                end
+                    -- STEP 2: TRAVEL TO TARGET
+                    local reached = false
+                    for i = 1, 5 do
+                        if not running then break end
+                        if teleportToTarget() then 
+                            reached = true 
+                            break 
+                        end
+                        task.wait(0.3)
+                    end
 
-                -- STEP 3
-                local bp1 = workspace:FindFirstChild("bp1frms")
-                local slapVal = bp1 and bp1:FindFirstChild("LastSlappedBy")
-                if slapVal then
-                    local t = 0
-                    while running and slapVal.Value ~= targetName and t < 5 do
-                        t = t + task.wait(0.1)
+                    -- STEP 3: THE SLAP WATCHER (The fix for "Resetting too early")
+                    if reached then
+                        task.wait(0.3) -- GIVE TIME TO SLAP
+                        
+                        local bp1 = workspace:FindFirstChild("bp1frms")
+                        local slapVal = bp1 and bp1:FindFirstChild("LastSlappedBy")
+                        
+                        -- We wait up to 4 seconds for the slap to register
+                        local timeout = 0
+                        while running and timeout < 4 do
+                            if slapVal and slapVal.Value == targetName then
+                                break -- Successful slap detected
+                            end
+                            timeout = timeout + task.wait(0.1)
+                        end
+                        
+                        -- Extra tiny wait to ensure the server "saves" the slap
+                        task.wait(0.2)
+                    end
+
+                    -- STEP 4: RESET
+                    if running and hum.Health > 0 then
+                        hum.Health = 0
+                        -- Ensure character is gone before waiting for new one
+                        task.wait(0.2) 
+                        player.CharacterAdded:Wait()
+                        task.wait(0.6) -- Post-spawn cooldown
                     end
                 end
-
-                -- STEP 4
-                if running and hum.Health > 0 then
-                    hum.Health = 0
-                    player.CharacterAdded:Wait()
-                    task.wait(0.5)
-                end
-            end
+            end)
         end
         task.wait(0.1)
     end
@@ -97,8 +117,12 @@ local function onChat(msg, speaker)
     local cmd = args[1]
 
     if cmd == ".start" then
-        running = true
-        chatLog("Bot Started.")
+        if targetName then
+            running = true
+            chatLog("Bot Started.")
+        else
+            chatLog("Set a target first!")
+        end
     elseif cmd == ".stop" then
         running = false
         chatLog("Bot Stopped.")
