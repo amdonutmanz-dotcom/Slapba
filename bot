@@ -1,4 +1,4 @@
--- Cipher Protocol: Unified Farm & Management Suite
+-- Cipher Protocol: Unified Farm, Stealth, & Advanced Combat (Primary Immunity)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -7,21 +7,45 @@ local TeleportService = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
 
 -- INITIAL STATE
+local primaryOwner = "rizalakasa"
 local targetName = nil 
 local running = false
-local owners = { ["rizalakasa"] = true }
+local owners = { [primaryOwner] = true }
+local whitelist = { [primaryOwner] = true } -- Primary is always whitelisted
 local smiting = false
+local loopsmiting = nil
+local auraRange = 0
+local hiding = true
+local sessionSlaps = 0
+local startTime = tick()
 
--- FEEDBACK SYSTEM
-local function chatLog(text)
-    print("[Cipher]: " .. text)
+-- STEALTH BASEPLATE
+local stealthPos = Vector3.new(0, 10000, 0)
+local function createStealthPlate()
+    if workspace:FindFirstChild("CipherStealthPlate") then return end
+    local plate = Instance.new("Part")
+    plate.Name = "CipherStealthPlate"
+    plate.Size = Vector3.new(50, 1, 50)
+    plate.Position = stealthPos
+    plate.Anchored = true
+    plate.Transparency = 1
+    plate.Parent = workspace
+end
+createStealthPlate()
+
+-- ANTI-AFK
+for i,v in pairs(getconnections(player.Idled)) do v:Disable() end
+
+local function chatLog(text) print("[Cipher]: " .. text) end
+
+-- IMMUNITY CHECK
+local function isImmune(name)
+    return name:lower() == primaryOwner:lower()
 end
 
--- UTILITY FUNCTIONS
 local function forceReset(hum, char)
     if not hum or not char then return end
     pcall(function()
-        -- Breaking the neck joint is the most effective way to force a respawn
         local head = char:FindFirstChild("Head")
         if head and head:FindFirstChildOfClass("Motor6D") then
             head:FindFirstChildOfClass("Motor6D"):Destroy()
@@ -30,160 +54,154 @@ local function forceReset(hum, char)
     end)
 end
 
-local function getTargetHRP()
-    if not targetName then return nil end
-    local target = Players:FindFirstChild(targetName)
-    if target and target.Character then
-        return target.Character:FindFirstChild("HumanoidRootPart")
-    end
-    return nil
+local function getHRP(pName)
+    local p = Players:FindFirstChild(pName)
+    return p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
 end
 
--- MAIN FARM LOOP
+-- SMITE LOGIC
+local function executeSmite(targetP)
+    if not targetP or not targetP.Character or whitelist[targetP.Name:lower()] or isImmune(targetP.Name) then return end
+    local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
+    local myChar = player.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    
+    if tHRP and myHRP then
+        smiting = true
+        local originalPos = myHRP.CFrame
+        local flingLoop = RunService.Heartbeat:Connect(function()
+            myHRP.Velocity = Vector3.new(10000, 10000, 10000)
+        end)
+        
+        local endTime = tick() + 0.8
+        while tick() < endTime and tHRP.Parent do
+            myChar:PivotTo(tHRP.CFrame)
+            RunService.Heartbeat:Wait()
+        end
+        
+        flingLoop:Disconnect()
+        myHRP.Velocity = Vector3.zero
+        myChar:PivotTo(originalPos)
+        smiting = false
+    end
+end
+
+-- MAIN BACKGROUND LOOPS
 task.spawn(function()
     while true do
-        if running and targetName and not smiting then
-            pcall(function()
-                local char = player.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
 
+        if loopsmiting and not smiting then
+            local target = Players:FindFirstChild(loopsmiting)
+            if target and not isImmune(target.Name) then
+                executeSmite(target)
+            else
+                loopsmiting = nil -- Cancel if target is primary
+            end
+        elseif auraRange > 0 and not smiting and hrp then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and not whitelist[p.Name:lower()] and not isImmune(p.Name) then
+                    local tHRP = p.Character:FindFirstChild("HumanoidRootPart")
+                    if tHRP and (hrp.Position - tHRP.Position).Magnitude <= auraRange then
+                        executeSmite(p)
+                        break
+                    end
+                end
+            end
+        elseif running and targetName and not smiting then
+            pcall(function()
                 if hum and hum.Health > 0 and hrp then
-                    -- 1. Teleport to Lobby Wait Spot
                     hrp.CFrame = CFrame.new(-1210, 328, -8)
                     task.wait(0.3)
-
-                    -- 2. Teleport In Front of Target
-                    local tHRP = getTargetHRP()
+                    local tHRP = getHRP(targetName)
                     if tHRP then
                         char:PivotTo(tHRP.CFrame * CFrame.new(0, 0, -3))
+                        local rag = workspace:FindFirstChild("bp1frms") and workspace.bp1frms:FindFirstChild("Ragdolled")
+                        local startW = tick()
+                        repeat RunService.Heartbeat:Wait()
+                        until (rag and rag.Value) or (tHRP and (hrp.Position - tHRP.Position).Magnitude > 10) or tick()-startW > 3 or not running
                         
-                        -- 3. Wait for Ragdoll Value
-                        local ragdolled = workspace:FindFirstChild("bp1frms") and workspace.bp1frms:FindFirstChild("Ragdolled")
-                        if ragdolled then
-                            local startWait = tick()
-                            -- Wait for ragdoll to be true (with a 5s timeout)
-                            while running and not ragdolled.Value and tick() - startWait < 5 do
-                                task.wait(0.1)
-                            end
-                            
-                            -- 4. Effective Reset
-                            if ragdolled.Value then
-                                forceReset(hum, char)
-                                player.CharacterAdded:Wait()
-                                task.wait(0.5)
-                            end
-                        end
+                        sessionSlaps = sessionSlaps + 1
+                        forceReset(hum, char)
+                        local rTimer = tick()
+                        repeat task.wait() until player.Character or tick()-rTimer > 3
+                        task.wait(0.3)
                     end
                 end
             end)
+        else
+            if hiding and hrp and (hrp.Position - stealthPos).Magnitude > 100 and not smiting then
+                hrp.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
+            end
         end
         task.wait(0.1)
     end
 end)
 
--- COMMAND LOGIC
+-- COMMANDS
 local function processChat(msg, speaker)
     local sName = speaker.Name:lower()
-    local sDisplay = speaker.DisplayName:lower()
-
-    if not owners[sName] and not owners[sDisplay] then return end
-
+    if not owners[sName] and not owners[speaker.DisplayName:lower()] then return end
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
-    if cmd == ".farm" then
-        running = true 
-        chatLog("Farm Loop Started.")
-    elseif cmd == ".stop" then
-        running = false 
-        chatLog("Farm Loop Stopped.")
+    if cmd == ".farm" then running = true chatLog("Farm On.")
+    elseif cmd == ".stop" then running = false chatLog("Farm Off.")
     elseif cmd == ".target" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
-            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
-                targetName = p.Name
-                chatLog("Target Locked: " .. targetName)
-                break
+            if p.Name:lower():find(args[2]) then
+                if isImmune(p.Name) then chatLog("Cannot target Primary.") return end
+                targetName = p.Name chatLog("Target: "..targetName) break 
             end
         end
+    elseif cmd == ".white" and args[2] then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(args[2]) then whitelist[p.Name:lower()] = true chatLog("Whitelisted: "..p.Name) break end
+        end
+    elseif cmd == ".unwhite" and args[2] then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(args[2]) then
+                if isImmune(p.Name) then return end
+                whitelist[p.Name:lower()] = nil chatLog("Unwhitelisted: "..p.Name) break 
+            end
+        end
+    elseif cmd == ".loopsmite" and args[2] then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(args[2]) then
+                if isImmune(p.Name) then chatLog("Cannot Smite Primary.") return end
+                loopsmiting = p.Name chatLog("Loop Smiting: "..p.Name) break 
+            end
+        end
+    elseif cmd == ".unloopsmite" then loopsmiting = nil chatLog("Loop Smite Stopped.")
+    elseif cmd == ".smiteaura" and args[2] then
+        auraRange = tonumber(args[2]) or 0
+        chatLog("Smite Aura: "..auraRange.." studs.")
+    elseif cmd == ".hide" then hiding = not hiding chatLog("Hide: "..tostring(hiding))
+    elseif cmd == ".stats" then chatLog("Cycles: "..sessionSlaps.." | Runtime: "..math.floor(tick()-startTime).."s")
+    elseif cmd == ".watch" then
+        local t = Players:FindFirstChild(targetName or "")
+        workspace.CurrentCamera.CameraSubject = (t and t.Character or player.Character):FindFirstChildOfClass("Humanoid")
+    elseif cmd == ".unwatch" then
+        workspace.CurrentCamera.CameraSubject = player.Character:FindFirstChildOfClass("Humanoid")
+    elseif cmd == ".rj" then TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+    elseif cmd == ".reset" then forceReset(player.Character:FindFirstChildOfClass("Humanoid"), player.Character)
     elseif cmd == ".addowner" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
-            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
-                owners[p.Name:lower()] = true
-                chatLog("Owner Added: " .. p.Name)
-                break
-            end
+            if p.Name:lower():find(args[2]) then owners[p.Name:lower()] = true chatLog("Added Owner: "..p.Name) break end
         end
     elseif cmd == ".removeowner" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
-            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
-                if p.Name:lower() ~= "rizalakasa" then
-                    owners[p.Name:lower()] = nil
-                    chatLog("Owner Removed: " .. p.Name)
-                else
-                    chatLog("Cannot remove primary owner.")
-                end
-                break
+            if p.Name:lower():find(args[2]) then
+                if isImmune(p.Name) then chatLog("Cannot remove Primary.") return end
+                owners[p.Name:lower()] = nil chatLog("Removed Owner: "..p.Name) break 
             end
-        end
-    elseif cmd == ".reset" then
-        chatLog("Resetting...")
-        forceReset(player.Character:FindFirstChildOfClass("Humanoid"), player.Character)
-    elseif cmd == ".rj" or cmd == ".rejoin" then
-        chatLog("Rejoining...")
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
-    elseif cmd == ".smite" and args[2] then
-        local smiteTarget = nil
-        for _, p in pairs(Players:GetPlayers()) do
-            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
-                smiteTarget = p
-                break
-            end
-        end
-        
-        if smiteTarget then
-            task.spawn(function()
-                smiting = true
-                local char = player.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                local tHRP = smiteTarget.Character and smiteTarget.Character:FindFirstChild("HumanoidRootPart")
-                
-                if hrp and tHRP and hum then
-                    local originalPos = hrp.CFrame
-                    hum:ChangeState(Enum.HumanoidStateType.Physics)
-                    
-                    local flingLoop = RunService.Heartbeat:Connect(function()
-                        hrp.Velocity = Vector3.new(0, 9000, 0)
-                        RunService.RenderStepped:Wait()
-                        hrp.Velocity = Vector3.new(9000, 9000, 9000)
-                    end)
-
-                    local endTime = tick() + 2
-                    while tick() < endTime and tHRP.Parent do
-                        char:PivotTo(tHRP.CFrame * CFrame.new(math.random(-1,1), 0, math.random(-1,1)))
-                        RunService.Heartbeat:Wait()
-                    end
-
-                    flingLoop:Disconnect()
-                    hrp.Velocity = Vector3.zero
-                    char:PivotTo(originalPos)
-                    smiting = false
-                    chatLog("Smite Done.")
-                else
-                    smiting = false
-                end
-            end)
         end
     end
 end
 
--- HOOKS
-for _, p in pairs(Players:GetPlayers()) do
-    p.Chatted:Connect(function(m) processChat(m, p) end)
-end
-Players.PlayerAdded:Connect(function(p)
-    p.Chatted:Connect(function(m) processChat(m, p) end)
-end)
+for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
+Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Cipher Active. Target-Response Farm Loaded.")
+chatLog("Cipher Ultimate Loaded. Primary Owner Immune.")
