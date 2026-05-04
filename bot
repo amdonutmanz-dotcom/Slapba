@@ -1,4 +1,4 @@
--- Cipher Protocol: Utility Expansion Patch (Anti-Dislocation Edition)
+-- Cipher Protocol: Utility Expansion Patch (Collision-Active Edition)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -39,6 +39,7 @@ local function teleportToTarget()
 
     local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
     if targetHRP then
+        -- Teleport 3 studs IN FRONT of the target
         myChar:PivotTo(targetHRP.CFrame * CFrame.new(0, 0, -3))
         return true
     end
@@ -79,15 +80,15 @@ task.spawn(function()
                         local startPos = myHRP.Position
                         local portalTimeout = tick()
                         
-                        -- Phase 1: Lockdown Physics to prevent dying during transit
-                        humanoid.PlatformStand = true -- Disables all animations/physics
-                        myHRP.Anchored = true
+                        -- Phase 1: Soft Physics Lockdown (Lighter than anchoring)
+                        humanoid:ChangeState(Enum.HumanoidStateType.Physics)
                         
                         repeat 
-                            myHRP.Velocity = Vector3.zero
+                            -- Stop any stray flinging velocity
+                            myHRP.Velocity = Vector3.new(0, -1, 0) -- Slight downward force to help .Touched
                             myHRP.RotVelocity = Vector3.zero
                             
-                            -- Move while anchored to ensure whole body follows
+                            -- Move to the part
                             char:PivotTo(portalPart.CFrame)
                             
                             if firetouchinterest then 
@@ -102,14 +103,13 @@ task.spawn(function()
                             successTeleport = true
                         end
                         
-                        -- Phase 2: Release Physics
-                        myHRP.Anchored = false
-                        humanoid.PlatformStand = false
+                        -- Phase 2: Resume Normal State
+                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
                     end
 
                     -- Phase 3: Strike
                     if successTeleport and running and not smiting then
-                        task.wait(0.05) 
+                        task.wait(0.1) -- Short buffer to let parts load
                         local hitPlayer = false
                         for i = 1, 5 do
                             if teleportToTarget() then hitPlayer = true break end
@@ -153,10 +153,10 @@ local function processChat(msg, speaker)
     if cmd == ".start" then
         running = true 
         lastActivity = tick()
-        chatLog("Cipher Start.")
+        chatLog("Cipher Engaged.")
     elseif cmd == ".stop" then
         running = false 
-        chatLog("Cipher Stop.")
+        chatLog("Cipher Disengaged.")
     elseif cmd == ".target" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
@@ -219,4 +219,4 @@ Players.PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(m) processChat(m, p) end)
 end)
 
-chatLog("Cipher Active. Anti-Physics Lockdown Engaged.")
+chatLog("Cipher Active. Physics-Fluid Portal Logic Loaded.")
