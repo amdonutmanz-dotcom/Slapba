@@ -1,10 +1,10 @@
--- Cipher Protocol: Utility Expansion Patch (Clean Loop Edition)
+-- Cipher Protocol: Management Suite Restored
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
 
 -- INITIAL STATE
 local targetName = nil 
@@ -17,7 +17,7 @@ local function chatLog(text)
     print("[Cipher]: " .. text)
 end
 
--- HELPER FUNCTIONS
+-- UTILITY FUNCTIONS
 local function forceReset(hum, char)
     if not hum or not char then return end
     pcall(function()
@@ -29,113 +29,68 @@ local function forceReset(hum, char)
     end)
 end
 
-local function teleportToTarget()
-    if not targetName then return false end
-    local target = Players:FindFirstChild(targetName)
-    local myChar = player.Character
-    if not target or not target.Character or not myChar then return false end
-
-    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-    if targetHRP then
-        -- Teleport 3 studs IN FRONT of the target
-        myChar:PivotTo(targetHRP.CFrame * CFrame.new(0, 0, -3))
-        return true
-    end
-    return false
-end
-
--- MAIN FARMING LOOP
-task.spawn(function()
-    while true do
-        if running and targetName and not smiting then
-            pcall(function()
-                local char = player.Character
-                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-                local myHRP = char and char:FindFirstChild("HumanoidRootPart")
-                
-                if humanoid and humanoid.Health > 0 and myHRP then
-                    local portalPart = workspace:FindFirstChild("Lobby") and workspace.Lobby:FindFirstChild("Teleport1")
-                    local successTeleport = false
-
-                    if portalPart then 
-                        local startPos = myHRP.Position
-                        local portalTimeout = tick()
-                        
-                        -- Keep attempting portal until distance is validated
-                        repeat 
-                            myHRP.Velocity = Vector3.new(0, -1, 0)
-                            myHRP.RotVelocity = Vector3.zero
-                            
-                            char:PivotTo(portalPart.CFrame)
-                            
-                            if firetouchinterest then 
-                                firetouchinterest(myHRP, portalPart, 0)
-                                task.wait()
-                                firetouchinterest(myHRP, portalPart, 1)
-                            end
-                            task.wait(0.1)
-                        until (myHRP.Position - startPos).Magnitude > 50 or not running or (tick() - portalTimeout > 10)
-                        
-                        if (myHRP.Position - startPos).Magnitude > 50 then
-                            successTeleport = true
-                        end
-                    end
-
-                    -- Phase 2: Strike
-                    if successTeleport and running and not smiting then
-                        task.wait(0.15) 
-                        local hitPlayer = false
-                        for i = 1, 5 do
-                            if teleportToTarget() then hitPlayer = true break end
-                            task.wait(0.1)
-                        end
-
-                        if hitPlayer then
-                            local bp1frms = workspace:FindFirstChild("bp1frms")
-                            local slappedVal = bp1frms and bp1frms:FindFirstChild("LastSlappedBy")
-                            local waitTime = tick()
-                            if slappedVal then
-                                while running and slappedVal.Value ~= targetName and tick() - waitTime < 5 do
-                                    task.wait(0.1)
-                                end
-                            end
-                        end
-
-                        -- Phase 3: Reset
-                        if running and not smiting then
-                            forceReset(humanoid, char)
-                            player.CharacterAdded:Wait()
-                            task.wait(0.5)
-                        end
-                    end
-                end
-            end)
-        end
-        task.wait(0.5)
-    end
-end)
-
 -- COMMAND LOGIC
 local function processChat(msg, speaker)
     local sName = speaker.Name:lower()
-    if not owners[sName] and not owners[speaker.DisplayName:lower()] then return end
+    local sDisplay = speaker.DisplayName:lower()
+
+    -- Authority Check
+    if not owners[sName] and not owners[sDisplay] then return end
+
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
-    if cmd == ".start" then
-        running = true 
-        chatLog("Bot Engaged (Failsafe Removed).")
-    elseif cmd == ".stop" then
-        running = false 
-        chatLog("Bot Disengaged.")
+    -- 1. Management Commands
+    if cmd == ".addowner" and args[2] then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
+                owners[p.Name:lower()] = true
+                chatLog("Owner Added: " .. p.Name)
+                break
+            end
+        end
+
+    elseif cmd == ".removeowner" and args[2] then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
+                if p.Name:lower() ~= "rizalakasa" then
+                    owners[p.Name:lower()] = nil
+                    chatLog("Owner Removed: " .. p.Name)
+                else
+                    chatLog("Cannot remove primary owner.")
+                end
+                break
+            end
+        end
+
+    elseif cmd == ".reset" then
+        chatLog("Manually Resetting...")
+        local char = player.Character
+        forceReset(char:FindFirstChildOfClass("Humanoid"), char)
+
+    elseif cmd == ".rejoin" or cmd == ".rj" then
+        chatLog("Rejoining Server...")
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+
+    -- 2. Target Logic (Preserved)
     elseif cmd == ".target" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 targetName = p.Name
-                chatLog("Locked: " .. targetName)
+                chatLog("Locked Target: " .. targetName)
                 break
             end
         end
+
+    -- 3. Loop Control (Awaiting Redo)
+    elseif cmd == ".start" then
+        running = true 
+        chatLog("Start command received. Awaiting logic redo...")
+    elseif cmd == ".stop" then
+        running = false 
+        chatLog("Loop Paused.")
+
+    -- 4. Smite Logic (Preserved)
     elseif cmd == ".smite" and args[2] then
         local smiteTarget = nil
         for _, p in pairs(Players:GetPlayers()) do
@@ -173,7 +128,7 @@ local function processChat(msg, speaker)
                     hrp.Velocity = Vector3.zero
                     char:PivotTo(originalPos)
                     smiting = false
-                    chatLog("Smite Done.")
+                    chatLog("Smite Concluded.")
                 else
                     smiting = false
                 end
@@ -190,4 +145,4 @@ Players.PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(m) processChat(m, p) end)
 end)
 
-chatLog("Cipher Active. Clean Loop - No Failsafe.")
+chatLog("Cipher Ready. Utility & Target Logic Online.")
