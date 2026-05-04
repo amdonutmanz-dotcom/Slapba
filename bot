@@ -1,4 +1,4 @@
--- Cipher Protocol: Utility Expansion Patch
+-- Cipher Protocol: Utility Expansion Patch (Distance-Validated)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -66,11 +66,20 @@ task.spawn(function()
                 
                 if humanoid and humanoid.Health > 0 then
                     local myHRP = getHRP(char)
-                    if myHRP then myHRP.CFrame = CFrame.new(-1210, 328, 4) end
-                    task.wait(0.6)
+                    if myHRP then 
+                        local portalPos = Vector3.new(-1210, 328, 4)
+                        myHRP.CFrame = CFrame.new(portalPos) 
+                        
+                        -- VALIDATION: Wait until the portal actually teleports us
+                        local startTick = tick()
+                        repeat 
+                            task.wait(0.1)
+                        until (myHRP.Position - portalPos).Magnitude > 10 or tick() - startTick > 3 or not running
+                    end
 
-                    if smiting then return end
+                    if smiting or not running then return end
 
+                    -- Teleport to Player strike
                     for i = 1, 5 do
                         if not running or smiting or teleportToTarget() then break end
                         task.wait(0.2)
@@ -230,4 +239,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do connect(p) end
 Players.PlayerAdded:Connect(connect)
 
-chatLog("Cipher Active. Utility Commands Loaded.")
+chatLog("Cipher Active. Distance Validation Enabled.")
