@@ -1,4 +1,4 @@
--- Stable Base with Aggressive Prediction
+-- Stable Base with Jitter-Prediction Smite
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -62,7 +62,7 @@ task.spawn(function()
                     end
 
                     local bp1frms = workspace:FindFirstChild("bp1frms")
-                    local slashedVal = bp1frms and bp1frms:FindFirstChild("LastSlappedBy")
+                    local slappedVal = bp1frms and bp1frms:FindFirstChild("LastSlappedBy")
 
                     if slappedVal then
                         local timer = 0
@@ -117,7 +117,7 @@ local function processChat(msg, speaker)
             end
         end
 
-    -- SMITE COMMAND WITH AGGRESSIVE PREDICTION
+    -- SMITE COMMAND WITH JITTER PREDICTION
     elseif cmd == ".smite" and args[2] then
         local smiteTarget = nil
         for _, p in pairs(Players:GetPlayers()) do
@@ -136,11 +136,10 @@ local function processChat(msg, speaker)
                 
                 local tChar = smiteTarget.Character
                 local tHRP = tChar:FindFirstChild("HumanoidRootPart")
-                local tHum = tChar:FindFirstChildOfClass("Humanoid")
                 
-                if hrp and tHRP and hum and tHum then
+                if hrp and tHRP and hum then
                     local originalPos = hrp.CFrame
-                    chatLog("Smiting (Aggressive Prediction): " .. smiteTarget.Name)
+                    chatLog("Executing Jitter Smite: " .. smiteTarget.Name)
 
                     hrp.CanCollide = false
                     hum:ChangeState(11)
@@ -155,19 +154,21 @@ local function processChat(msg, speaker)
                     end)
 
                     local endTime = tick() + 4
+                    local jitterAmount = 2
+                    local toggle = true
+
                     while tick() < endTime do
                         if tHRP and tHRP.Parent then
-                            -- AGGRESSIVE PREDICTION MATH:
-                            -- Uses Velocity instead of MoveDirection for zero-delay tracking
-                            -- Multiplier set to 0.22 (roughly 220ms lead)
-                            local prediction = tHRP.Velocity * 0.7
+                            -- Base Prediction (Lead them by 0.2s)
+                            local prediction = tHRP.Velocity * 0.2
+                            local basePos = tHRP.CFrame + prediction
                             
-                            -- If they aren't moving, stay centered. If they are, lead them.
-                            if tHRP.Velocity.Magnitude < 1 then
-                                hrp.CFrame = tHRP.CFrame
-                            else
-                                hrp.CFrame = tHRP.CFrame + prediction
-                            end
+                            -- Apply Jitter
+                            toggle = not toggle
+                            local offset = toggle and jitterAmount or -jitterAmount
+                            
+                            -- Jittering along their X axis relative to their movement
+                            hrp.CFrame = basePos * CFrame.new(offset, 0, offset)
                         end
                         RunService.Heartbeat:Wait()
                     end
@@ -191,4 +192,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do connect(p) end
 Players.PlayerAdded:Connect(connect)
 
-chatLog("Cipher Active. High-Lead Smite Loaded.")
+chatLog("Cipher Active. Jitter Smite Ready.")
