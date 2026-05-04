@@ -1,4 +1,4 @@
-print("CIPHER: Ragdoll-Detect Protocol Loading...")
+print("CIPHER: Distance-Verified Protocol Loading...")
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -39,7 +39,7 @@ local function teleportToTarget()
     
     if targetHRP and myHRP then
         myHRP.Velocity = Vector3.zero
-        -- Positioned for a direct hit
+        -- Snap to target with a slight offset
         myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -2.5) * CFrame.Angles(0, math.pi, 0)
         return true
     end
@@ -55,34 +55,48 @@ task.spawn(function()
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
                 local hrp = getHRP(player)
                 
+                local targetObj = Players:FindFirstChild(targetName)
+                
                 if hum and hrp and hum.Health > 0 then
                     -- STEP 1: PORTAL PREP
                     hrp.CFrame = CFrame.new(-1210, 328, 4)
                     task.wait(0.5)
 
-                    -- STEP 2: TELEPORT TO TARGET
-                    local reached = false
-                    for i = 1, 8 do
+                    -- STEP 2: TELEPORT & DISTANCE VERIFICATION
+                    local arrived = false
+                    for i = 1, 10 do
                         if not running then break end
-                        if teleportToTarget() then reached = true break end
-                        task.wait(0.2)
+                        teleportToTarget()
+                        task.wait(0.1)
+                        
+                        -- Check distance
+                        local tHRP = getHRP(targetObj)
+                        if tHRP and hrp then
+                            local dist = (hrp.Position - tHRP.Position).Magnitude
+                            if dist <= 4 then -- Allowing 4 studs for margin of error
+                                arrived = true
+                                break
+                            end
+                        end
                     end
 
-                    -- STEP 3: THE RAGDOLL WATCHER
-                    if reached then
+                    -- STEP 3: RAGDOLL WATCHER (Only if we actually arrived)
+                    if arrived then
                         local timer = 0
                         while running and timer < 4 do
-                            -- Check if we are ragdolled (R6 games use PlatformStand or Sit for ragdolls)
-                            if hum.PlatformStand == true or hum.Sit == true or hum:GetState() == Enum.HumanoidStateType.FallingDown then
-                                chatLog("Slap Detected (Ragdoll State)")
+                            -- Check for Ragdoll/State changes
+                            if hum.PlatformStand or hum.Sit or hum:GetState() == Enum.HumanoidStateType.FallingDown then
+                                chatLog("Slap Registered (State Change)")
                                 break
                             end
                             
-                            -- Keep glued while waiting for the slap to land
+                            -- Force stay on target while waiting
                             teleportToTarget()
                             timer = timer + task.wait(0.05)
                         end
-                        task.wait(0.2) -- Tiny buffer for server sync
+                        task.wait(0.2)
+                    else
+                        chatLog("Teleport Failed: Target moved or obscured.")
                     end
 
                     -- STEP 4: RESET
@@ -151,4 +165,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) onChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) onChat(m, p) end) end)
 
-chatLog("Ragdoll-Detect System Ready.")
+chatLog("Distance-Check Protocol Ready.")
