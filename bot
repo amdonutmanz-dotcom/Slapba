@@ -1,8 +1,9 @@
--- Final Check: All brackets and ends accounted for.
+-- Re-verifying the stable base with the upgraded Smite
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
 -- INITIAL STATE
 local targetName = nil 
@@ -20,23 +21,23 @@ local function getHRP(char)
     return char:WaitForChild("HumanoidRootPart", 5)
 end
 
--- FLING LOGIC
+-- UPGRADED FLING (More aggressive)
 local function setFling(state)
     local char = player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
     if state then
-        -- High velocity logic for "WalkFling"
-        local bV = Instance.new("BodyAngularVelocity")
-        bV.Name = "CipherFling"
-        bV.AngularVelocity = Vector3.new(0, 99999, 0)
-        bV.MaxTorque = Vector3.new(0, math.huge, 0)
-        bV.P = math.huge
-        bV.Parent = hrp
-    else
-        local existing = hrp:FindFirstChild("CipherFling")
-        if existing then existing:Destroy() end
+        -- High-power physics manipulation
+        task.spawn(function()
+            while _G.Smiting do
+                hrp.Velocity = Vector3.new(9e9, 9e9, 9e9)
+                hrp.RotVelocity = Vector3.new(9e9, 9e9, 9e9)
+                RunService.Heartbeat:Wait()
+            end
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
+        end)
     end
 end
 
@@ -112,50 +113,31 @@ local function processChat(msg, speaker)
     local cmd = args[1]
 
     if cmd == ".start" then
-        if targetName then
-            running = true
-            print("Cipher: Started targeting " .. targetName)
-        else
-            print("Cipher: Set a target first.")
-        end
+        if targetName then running = true print("Cipher: Started.") else print("Cipher: No target.") end
     elseif cmd == ".stop" then
-        running = false
-        print("Cipher: Stopped.")
+        running = false print("Cipher: Stopped.")
     elseif cmd == ".target" and args[2] then
-        local search = args[2]
         for _, p in pairs(Players:GetPlayers()) do
-            if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
+            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 targetName = p.Name
                 print("Cipher: Target is now " .. targetName)
                 break
             end
         end
     elseif cmd == ".addowner" and args[2] then
-        local search = args[2]
         for _, p in pairs(Players:GetPlayers()) do
-            if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
+            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 owners[p.Name:lower()] = true
-                print("Cipher: Added " .. p.Name .. " as an owner.")
-                break
-            end
-        end
-    elseif cmd == ".owner" and args[2] then
-        local search = args[2]
-        for _, p in pairs(Players:GetPlayers()) do
-            if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
-                owners = {[p.Name:lower()] = true}
-                print("Cipher: Owner is now " .. p.Name)
+                print("Cipher: Added owner " .. p.Name)
                 break
             end
         end
     
-    -- NEW COMMAND: .smite [user]
+    -- RE-CODED SMITE
     elseif cmd == ".smite" and args[2] then
-        local search = args[2]
         local smiteTarget = nil
-        
         for _, p in pairs(Players:GetPlayers()) do
-            if string.find(p.Name:lower(), search) or string.find(p.DisplayName:lower(), search) then
+            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 smiteTarget = p
                 break
             end
@@ -163,41 +145,39 @@ local function processChat(msg, speaker)
         
         if smiteTarget and smiteTarget.Character then
             task.spawn(function()
-                local char = player.Character
-                local myHRP = getHRP(char)
-                local targetHRP = smiteTarget.Character:FindFirstChild("HumanoidRootPart")
+                local myChar = player.Character
+                local myHRP = getHRP(myChar)
+                local tHRP = smiteTarget.Character:FindFirstChild("HumanoidRootPart")
                 
-                if myHRP and targetHRP then
+                if myHRP and tHRP then
                     local originalPos = myHRP.CFrame
-                    print("Cipher: Smiting " .. smiteTarget.Name)
-                    
+                    _G.Smiting = true
                     setFling(true)
-                    -- Stick to target for 4 seconds
-                    local endTime = tick() + 4
-                    while tick() < endTime do
-                        if targetHRP and targetHRP.Parent then
-                            myHRP.CFrame = targetHRP.CFrame
+                    
+                    local startTime = tick()
+                    while tick() - startTime < 4 do
+                        if tHRP and tHRP.Parent then
+                            -- We stay inside them, but keep moving slightly to trigger physics collision
+                            myHRP.CFrame = tHRP.CFrame * CFrame.new(math.random(-1,1), 0, math.random(-1,1))
                         end
-                        task.wait()
+                        RunService.Stepped:Wait()
                     end
                     
-                    setFling(false)
+                    _G.Smiting = false
+                    task.wait(0.1)
                     myHRP.CFrame = originalPos
-                    print("Cipher: Smite complete.")
+                    print("Cipher: Smite finished.")
                 end
             end)
         end
     end
 end
 
--- HOOK CHAT
 local function connectChat(p)
-    p.Chatted:Connect(function(msg)
-        processChat(msg, p)
-    end)
+    p.Chatted:Connect(function(msg) processChat(msg, p) end)
 end
 
 for _, p in pairs(Players:GetPlayers()) do connectChat(p) end
 Players.PlayerAdded:Connect(connectChat)
 
-print("Cipher Protocol Active. Initial Owner: Rizalakasa")
+print("Cipher Protocol Active. Smite Upgraded.")
