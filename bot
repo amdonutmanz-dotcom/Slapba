@@ -1,4 +1,4 @@
--- Cipher Protocol: Non-Resetting Annoy Module
+-- Cipher Protocol: Delayed-Equip Annoyance Module
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -167,15 +167,12 @@ local function processChat(msg, speaker)
         if annoyTarget then
             task.spawn(function()
                 annoying = true
-                
                 local char = getCharacter(player)
                 local hrp = getHRP(char)
-                
                 if not hrp then annoying = false return end
                 
-                -- Save original position to go back to
                 local originalCFrame = hrp.CFrame
-                chatLog("Starting sequence. Count: " .. count)
+                chatLog("Annoyance Protocol Engaged.")
 
                 for i = 1, count do
                     if not annoying then break end
@@ -183,41 +180,51 @@ local function processChat(msg, speaker)
                     char = getCharacter(player)
                     hrp = getHRP(char)
                     local hum = char:FindFirstChildOfClass("Humanoid")
-                    local tool = player.Backpack:FindFirstChildOfClass("Tool") or char:FindFirstChildOfClass("Tool")
                     
-                    if hum and hum.Health > 0 and hrp and tool then
-                        local tChar = annoyTarget.Character
-                        local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
+                    if hum and hum.Health > 0 and hrp then
+                        -- STEP 1: Teleport to Portal
+                        hrp.CFrame = CFrame.new(-1210, 328, -7)
                         
-                        if tHRP then
-                            -- Intermediate jump
-                            hrp.CFrame = CFrame.new(-1210, 328, -7)
-                            task.wait(0.25)
-                            
-                            -- Behind target
-                            hrp.CFrame = tHRP.CFrame * CFrame.new(0, 0, 3)
-                            
-                            -- Use Tool
+                        -- STEP 2: Wait for Tool Pickup/Spawn
+                        task.wait(0.3)
+                        
+                        -- STEP 3: Find and Equip Tool
+                        local tool = player.Backpack:FindFirstChildOfClass("Tool") or char:FindFirstChildOfClass("Tool")
+                        
+                        if tool then
                             tool.Parent = char
                             task.wait(0.1)
-                            tool:Activate()
                             
-                            chatLog("Cycle " .. i .. " complete.")
-                            task.wait(2)
+                            local tChar = annoyTarget.Character
+                            local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
+                            
+                            if tHRP then
+                                -- STEP 4: Teleport behind target
+                                hrp.CFrame = tHRP.CFrame * CFrame.new(0, 0, 3)
+                                task.wait(0.05)
+                                
+                                -- STEP 5: Use
+                                tool:Activate()
+                                chatLog("Cycle " .. i .. "/" .. count .. " executed.")
+                                task.wait(2)
+                            else
+                                chatLog("Target lost.")
+                                break
+                            end
                         else
-                            break 
+                            chatLog("Failed to acquire tool at portal.")
+                            task.wait(1)
                         end
                     else
                         task.wait(1)
                     end
                 end
 
-                -- Go back to where it was
                 hrp = getHRP(player.Character)
                 if hrp then hrp.CFrame = originalCFrame end
                 
                 annoying = false
-                chatLog("Annoy Finished. Returned to original spot.")
+                chatLog("Annoyance Sequence Finished.")
             end)
         end
 
@@ -296,4 +303,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do connect(p) end
 Players.PlayerAdded:Connect(connect)
 
-chatLog("Cipher Ready. Non-Reset Annoy Active.")
+chatLog("Cipher Ready. Sequence Optimized.")
