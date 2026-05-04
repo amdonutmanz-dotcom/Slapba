@@ -1,4 +1,4 @@
-print("CIPHER: Precision Slap Protocol Loading...")
+print("CIPHER: Patience Protocol Loading...")
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -38,9 +38,9 @@ local function teleportToTarget()
     local myHRP = getHRP(player)
     
     if targetHRP and myHRP then
-        -- Teleport slightly closer and reset velocity to prevent sliding
-        myHRP.Velocity = Vector3.new(0,0,0)
-        myHRP.CFrame = targetHRP.CFrame + (targetHRP.CFrame.LookVector * 2.5)
+        myHRP.Velocity = Vector3.zero
+        -- Teleport slightly closer (2 studs) to ensure contact
+        myHRP.CFrame = targetHRP.CFrame + (targetHRP.CFrame.LookVector * 2)
         return true
     end
     return false
@@ -56,48 +56,46 @@ task.spawn(function()
                 local hrp = getHRP(player)
                 
                 if hum and hrp and hum.Health > 0 then
-                    -- STEP 1: TRAVEL TO PREP
+                    -- STEP 1: TRAVEL TO PREP (Portal)
                     hrp.CFrame = CFrame.new(-1210, 328, 4)
-                    task.wait(0.5) -- Increased prep wait
+                    task.wait(0.6) -- Added more time for portal transition
 
                     -- STEP 2: TRAVEL TO TARGET
                     local reached = false
-                    for i = 1, 5 do
+                    for i = 1, 10 do -- Increased retries
                         if not running then break end
                         if teleportToTarget() then 
                             reached = true 
                             break 
                         end
-                        task.wait(0.3)
+                        task.wait(0.2)
                     end
 
-                    -- STEP 3: THE SLAP WATCHER (The fix for "Resetting too early")
+                    -- STEP 3: THE PATIENT WATCHER
                     if reached then
-                        task.wait(0.3) -- GIVE TIME TO SLAP
-                        
                         local bp1 = workspace:FindFirstChild("bp1frms")
                         local slapVal = bp1 and bp1:FindFirstChild("LastSlappedBy")
                         
-                        -- We wait up to 4 seconds for the slap to register
-                        local timeout = 0
-                        while running and timeout < 4 do
+                        -- WAIT UNTIL SLAP REGISTERS (Max 6 seconds)
+                        local timer = 0
+                        while running and timer < 6 do
                             if slapVal and slapVal.Value == targetName then
-                                break -- Successful slap detected
+                                chatLog("Slap Confirmed on " .. targetName)
+                                break 
                             end
-                            timeout = timeout + task.wait(0.1)
+                            -- Keep forcing position while waiting for the slap
+                            teleportToTarget() 
+                            timer = timer + task.wait(0.1)
                         end
-                        
-                        -- Extra tiny wait to ensure the server "saves" the slap
-                        task.wait(0.2)
+                        task.wait(0.3) -- Final buffer to ensure server catch-up
                     end
 
                     -- STEP 4: RESET
                     if running and hum.Health > 0 then
                         hum.Health = 0
-                        -- Ensure character is gone before waiting for new one
-                        task.wait(0.2) 
+                        task.wait(0.2)
                         player.CharacterAdded:Wait()
-                        task.wait(0.6) -- Post-spawn cooldown
+                        task.wait(0.7) -- Post-spawn wait
                     end
                 end
             end)
@@ -117,12 +115,7 @@ local function onChat(msg, speaker)
     local cmd = args[1]
 
     if cmd == ".start" then
-        if targetName then
-            running = true
-            chatLog("Bot Started.")
-        else
-            chatLog("Set a target first!")
-        end
+        if targetName then running = true chatLog("Bot Started.") else chatLog("Error: No target.") end
     elseif cmd == ".stop" then
         running = false
         chatLog("Bot Stopped.")
@@ -130,7 +123,7 @@ local function onChat(msg, speaker)
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 targetName = p.Name
-                chatLog("Target set to: " .. targetName)
+                chatLog("Target: " .. targetName)
                 break
             end
         end
@@ -142,16 +135,24 @@ local function onChat(msg, speaker)
                 break
             end
         end
+    elseif cmd == ".removeowner" and args[2] then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
+                if p.Name:lower() ~= "rizalakasa" then -- Safety for main owner
+                    owners[p.Name:lower()] = nil
+                    chatLog("Removed Owner: " .. p.Name)
+                end
+                break
+            end
+        end
+    elseif cmd == ".clearowners" then
+        owners = {["rizalakasa"] = true, [player.Name:lower()] = true}
+        chatLog("Ownership list reset to defaults.")
     end
 end
 
 -- CONNECTIONS
-for _, p in pairs(Players:GetPlayers()) do
-    p.Chatted:Connect(function(m) onChat(m, p) end)
-end
+for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) onChat(m, p) end) end
+Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) onChat(m, p) end) end)
 
-Players.PlayerAdded:Connect(function(p)
-    p.Chatted:Connect(function(m) onChat(m, p) end)
-end)
-
-chatLog("System Ready. Target required.")
+chatLog("System Online. Target Required.")
