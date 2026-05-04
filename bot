@@ -1,4 +1,4 @@
--- Cipher Protocol: Utility Expansion Patch (Collision-Active Edition)
+-- Cipher Protocol: Utility Expansion Patch (Clean Loop Edition)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -11,8 +11,6 @@ local targetName = nil
 local running = false
 local owners = { ["rizalakasa"] = true }
 local smiting = false
-local lastActivity = tick()
-local isProcessing = false 
 
 -- FEEDBACK SYSTEM
 local function chatLog(text)
@@ -46,33 +44,16 @@ local function teleportToTarget()
     return false
 end
 
--- 2.5s ULTRA-FAST FAILSAFE
-task.spawn(function()
-    while true do
-        if running and not smiting and not isProcessing then
-            if tick() - lastActivity > 2.5 then
-                chatLog("Failsafe: Resetting.")
-                local char = player.Character
-                if char then forceReset(char:FindFirstChildOfClass("Humanoid"), char) end
-                lastActivity = tick()
-            end
-        end
-        task.wait(0.1)
-    end
-end)
-
 -- MAIN FARMING LOOP
 task.spawn(function()
     while true do
         if running and targetName and not smiting then
-            lastActivity = tick()
             pcall(function()
                 local char = player.Character
                 local humanoid = char and char:FindFirstChildOfClass("Humanoid")
                 local myHRP = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if humanoid and humanoid.Health > 0 and myHRP then
-                    isProcessing = true 
                     local portalPart = workspace:FindFirstChild("Lobby") and workspace.Lobby:FindFirstChild("Teleport1")
                     local successTeleport = false
 
@@ -80,15 +61,11 @@ task.spawn(function()
                         local startPos = myHRP.Position
                         local portalTimeout = tick()
                         
-                        -- Phase 1: Soft Physics Lockdown (Lighter than anchoring)
-                        humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-                        
+                        -- Keep attempting portal until distance is validated
                         repeat 
-                            -- Stop any stray flinging velocity
-                            myHRP.Velocity = Vector3.new(0, -1, 0) -- Slight downward force to help .Touched
+                            myHRP.Velocity = Vector3.new(0, -1, 0)
                             myHRP.RotVelocity = Vector3.zero
                             
-                            -- Move to the part
                             char:PivotTo(portalPart.CFrame)
                             
                             if firetouchinterest then 
@@ -96,24 +73,21 @@ task.spawn(function()
                                 task.wait()
                                 firetouchinterest(myHRP, portalPart, 1)
                             end
-                            task.wait(0.05)
-                        until (myHRP.Position - startPos).Magnitude > 50 or tick() - portalTimeout > 1.2 or not running
+                            task.wait(0.1)
+                        until (myHRP.Position - startPos).Magnitude > 50 or not running or (tick() - portalTimeout > 10)
                         
                         if (myHRP.Position - startPos).Magnitude > 50 then
                             successTeleport = true
                         end
-                        
-                        -- Phase 2: Resume Normal State
-                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
                     end
 
-                    -- Phase 3: Strike
+                    -- Phase 2: Strike
                     if successTeleport and running and not smiting then
-                        task.wait(0.1) -- Short buffer to let parts load
+                        task.wait(0.15) 
                         local hitPlayer = false
                         for i = 1, 5 do
                             if teleportToTarget() then hitPlayer = true break end
-                            task.wait(0.05)
+                            task.wait(0.1)
                         end
 
                         if hitPlayer then
@@ -121,25 +95,23 @@ task.spawn(function()
                             local slappedVal = bp1frms and bp1frms:FindFirstChild("LastSlappedBy")
                             local waitTime = tick()
                             if slappedVal then
-                                while running and slappedVal.Value ~= targetName and tick() - waitTime < 1.2 do
-                                    task.wait(0.05)
+                                while running and slappedVal.Value ~= targetName and tick() - waitTime < 5 do
+                                    task.wait(0.1)
                                 end
                             end
                         end
 
-                        -- Phase 4: Reset
-                        isProcessing = false
-                        lastActivity = tick()
-                        forceReset(humanoid, char)
-                        player.CharacterAdded:Wait()
-                    else
-                        isProcessing = false
-                        task.wait(0.1)
+                        -- Phase 3: Reset
+                        if running and not smiting then
+                            forceReset(humanoid, char)
+                            player.CharacterAdded:Wait()
+                            task.wait(0.5)
+                        end
                     end
                 end
             end)
         end
-        task.wait(0.1)
+        task.wait(0.5)
     end
 end)
 
@@ -152,11 +124,10 @@ local function processChat(msg, speaker)
 
     if cmd == ".start" then
         running = true 
-        lastActivity = tick()
-        chatLog("Cipher Engaged.")
+        chatLog("Bot Engaged (Failsafe Removed).")
     elseif cmd == ".stop" then
         running = false 
-        chatLog("Cipher Disengaged.")
+        chatLog("Bot Disengaged.")
     elseif cmd == ".target" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
@@ -219,4 +190,4 @@ Players.PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(m) processChat(m, p) end)
 end)
 
-chatLog("Cipher Active. Physics-Fluid Portal Logic Loaded.")
+chatLog("Cipher Active. Clean Loop - No Failsafe.")
