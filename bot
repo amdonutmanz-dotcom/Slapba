@@ -1,4 +1,4 @@
--- Cipher Protocol: Utility Expansion Patch (Failsafe + Watchdog Edition)
+-- Cipher Protocol: Utility Expansion Patch (Logic Correction + Reset Protection)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -11,7 +11,7 @@ local targetName = nil
 local running = false
 local owners = { ["rizalakasa"] = true }
 local smiting = false
-local lastActivity = tick() -- Watchdog timer
+local lastActivity = tick()
 
 -- FEEDBACK SYSTEM
 local function chatLog(text)
@@ -44,15 +44,15 @@ local function teleportToTarget()
     return false
 end
 
--- WATCHDOG FAILSAFE (Restarts loop if stuck for 20s)
+-- WATCHDOG FAILSAFE
 task.spawn(function()
     while true do
         if running and not smiting then
-            if tick() - lastActivity > 20 then
-                chatLog("Failsafe Triggered: Bot was stuck. Resetting...")
+            if tick() - lastActivity > 25 then
+                chatLog("Watchdog: Cycle timeout. Restarting...")
                 local char = player.Character
                 if char then forceReset(char:FindFirstChildOfClass("Humanoid"), char) end
-                lastActivity = tick() -- Reset timer
+                lastActivity = tick()
             end
         end
         task.wait(2)
@@ -71,53 +71,66 @@ task.spawn(function()
                 if humanoid and humanoid.Health > 0 then
                     local myHRP = char:FindFirstChild("HumanoidRootPart")
                     local portalPart = workspace:FindFirstChild("Lobby") and workspace.Lobby:FindFirstChild("Teleport1")
+                    local hasTeleported = false
 
                     -- Phase 1: Portal Entry
                     if myHRP and portalPart then 
-                        local preTeleportPos = myHRP.Position
+                        local portalPos = portalPart.Position
                         local portalTimeout = tick()
                         
+                        chatLog("Entering Portal...")
                         repeat 
-                            char:PivotTo(portalPart.CFrame * CFrame.new(math.random(-1,1)/5, 0, math.random(-1,1)/5))
+                            char:PivotTo(portalPart.CFrame * CFrame.new(0, 0, 0))
                             if firetouchinterest then 
                                 firetouchinterest(myHRP, portalPart, 0)
                                 task.wait()
                                 firetouchinterest(myHRP, portalPart, 1)
                             end
                             task.wait(0.2)
-                        until (myHRP.Position - preTeleportPos).Magnitude > 15 or tick() - portalTimeout > 3 or not running
-                    end
-
-                    if smiting or not running then return end
-                    lastActivity = tick()
-
-                    -- Phase 2: Strike
-                    task.wait(0.2) 
-                    local strikeSuccess = false
-                    for i = 1, 10 do
-                        if teleportToTarget() then strikeSuccess = true break end
-                        task.wait(0.1)
-                    end
-
-                    -- Phase 3: Wait for slap credit (with timeout)
-                    if strikeSuccess then
-                        local bp1frms = workspace:FindFirstChild("bp1frms")
-                        local slappedVal = bp1frms and bp1frms:FindFirstChild("LastSlappedBy")
-                        local creditTimer = tick()
-
-                        if slappedVal then
-                            while running and not smiting and slappedVal.Value ~= targetName and tick() - creditTimer < 5 do
-                                task.wait(0.1)
-                            end
+                            -- Check if we are away from the portal part
+                        until (myHRP.Position - portalPos).Magnitude > 20 or tick() - portalTimeout > 4 or not running
+                        
+                        if (myHRP.Position - portalPos).Magnitude > 20 then
+                            hasTeleported = true
                         end
                     end
 
-                    -- Phase 4: Reset & Wait for Respawn
-                    if running and not smiting then
-                        forceReset(humanoid, char)
-                        -- Robust respawn wait
-                        local newChar = player.CharacterAdded:Wait()
-                        newChar:WaitForChild("HumanoidRootPart", 10)
+                    -- Only proceed if the portal actually worked
+                    if hasTeleported and running and not smiting then
+                        lastActivity = tick()
+                        task.wait(0.3) -- Post-teleport stability delay
+
+                        -- Phase 2: Strike
+                        local strikeSuccess = false
+                        for i = 1, 10 do
+                            if teleportToTarget() then 
+                                strikeSuccess = true 
+                                break 
+                            end
+                            task.wait(0.1)
+                        end
+
+                        -- Phase 3: Credit Wait
+                        if strikeSuccess then
+                            local bp1frms = workspace:FindFirstChild("bp1frms")
+                            local slappedVal = bp1frms and bp1frms:FindFirstChild("LastSlappedBy")
+                            local creditTimer = tick()
+
+                            if slappedVal then
+                                while running and not smiting and slappedVal.Value ~= targetName and tick() - creditTimer < 5 do
+                                    task.wait(0.1)
+                                end
+                            end
+                        end
+
+                        -- Phase 4: Reset
+                        if running and not smiting then
+                            forceReset(humanoid, char)
+                            player.CharacterAdded:Wait()
+                            task.wait(0.5)
+                        end
+                    else
+                        -- If portal failed, try again without resetting health
                         task.wait(0.5)
                     end
                 end
@@ -137,15 +150,15 @@ local function processChat(msg, speaker)
     if cmd == ".start" then
         running = true 
         lastActivity = tick()
-        chatLog("Bot Started.")
+        chatLog("Loop Started.")
     elseif cmd == ".stop" then
         running = false 
-        chatLog("Bot Stopped.")
+        chatLog("Loop Stopped.")
     elseif cmd == ".target" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 targetName = p.Name
-                chatLog("Target: " .. targetName)
+                chatLog("Target Set: " .. targetName)
                 break
             end
         end
@@ -190,7 +203,7 @@ local function processChat(msg, speaker)
                     hrp.Velocity = Vector3.zero
                     char:PivotTo(originalPos)
                     smiting = false
-                    chatLog("Smite Finished.")
+                    chatLog("Smite Complete.")
                 else
                     smiting = false
                 end
@@ -207,4 +220,4 @@ Players.PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(m) processChat(m, p) end)
 end)
 
-chatLog("Cipher Loaded. Failsafe Watchdog Active.")
+chatLog("Cipher Ready. Loop Fixed.")
