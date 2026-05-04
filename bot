@@ -1,4 +1,4 @@
--- Cipher Protocol: Utility Expansion Patch (Ultra-Fast Failsafe Edition)
+-- Cipher Protocol: Utility Expansion Patch (Anti-Dislocation Edition)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -45,18 +45,18 @@ local function teleportToTarget()
     return false
 end
 
--- ULTRA-FAST FAILSAFE (2.5 Seconds)
+-- 2.5s ULTRA-FAST FAILSAFE
 task.spawn(function()
     while true do
         if running and not smiting and not isProcessing then
             if tick() - lastActivity > 2.5 then
-                chatLog("Failsafe: 2.5s Timeout. Resetting...")
+                chatLog("Failsafe: Resetting.")
                 local char = player.Character
                 if char then forceReset(char:FindFirstChildOfClass("Humanoid"), char) end
                 lastActivity = tick()
             end
         end
-        task.wait(0.1) -- Frequent checking for the 2.5s window
+        task.wait(0.1)
     end
 end)
 
@@ -75,13 +75,19 @@ task.spawn(function()
                     local portalPart = workspace:FindFirstChild("Lobby") and workspace.Lobby:FindFirstChild("Teleport1")
                     local successTeleport = false
 
-                    -- Phase 1: Portal Entry
                     if portalPart then 
                         local startPos = myHRP.Position
                         local portalTimeout = tick()
                         
+                        -- Phase 1: Lockdown Physics to prevent dying during transit
+                        humanoid.PlatformStand = true -- Disables all animations/physics
+                        myHRP.Anchored = true
+                        
                         repeat 
                             myHRP.Velocity = Vector3.zero
+                            myHRP.RotVelocity = Vector3.zero
+                            
+                            -- Move while anchored to ensure whole body follows
                             char:PivotTo(portalPart.CFrame)
                             
                             if firetouchinterest then 
@@ -90,16 +96,20 @@ task.spawn(function()
                                 firetouchinterest(myHRP, portalPart, 1)
                             end
                             task.wait(0.05)
-                        until (myHRP.Position - startPos).Magnitude > 50 or tick() - portalTimeout > 1.5 or not running
+                        until (myHRP.Position - startPos).Magnitude > 50 or tick() - portalTimeout > 1.2 or not running
                         
                         if (myHRP.Position - startPos).Magnitude > 50 then
                             successTeleport = true
                         end
+                        
+                        -- Phase 2: Release Physics
+                        myHRP.Anchored = false
+                        humanoid.PlatformStand = false
                     end
 
-                    -- Phase 2: Strike
+                    -- Phase 3: Strike
                     if successTeleport and running and not smiting then
-                        task.wait(0.1) 
+                        task.wait(0.05) 
                         local hitPlayer = false
                         for i = 1, 5 do
                             if teleportToTarget() then hitPlayer = true break end
@@ -111,13 +121,13 @@ task.spawn(function()
                             local slappedVal = bp1frms and bp1frms:FindFirstChild("LastSlappedBy")
                             local waitTime = tick()
                             if slappedVal then
-                                while running and slappedVal.Value ~= targetName and tick() - waitTime < 1.5 do
+                                while running and slappedVal.Value ~= targetName and tick() - waitTime < 1.2 do
                                     task.wait(0.05)
                                 end
                             end
                         end
 
-                        -- Phase 3: Reset
+                        -- Phase 4: Reset
                         isProcessing = false
                         lastActivity = tick()
                         forceReset(humanoid, char)
@@ -209,4 +219,4 @@ Players.PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(m) processChat(m, p) end)
 end)
 
-chatLog("Cipher Active. 2.5s Failsafe Enabled.")
+chatLog("Cipher Active. Anti-Physics Lockdown Engaged.")
