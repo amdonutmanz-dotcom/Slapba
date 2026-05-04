@@ -1,4 +1,4 @@
--- Cipher Protocol: Hit-Delay-Hide (Final Reset Patch)
+-- Cipher Protocol: Sky-Stall Annoyance Module
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -145,55 +145,56 @@ local function processChat(msg, speaker)
         if annoyTarget then
             task.spawn(function()
                 annoying = true
-                chatLog("Starting sequence...")
+                chatLog("Sequence Start: Fetching tool...")
+
+                local char = getCharacter(player)
+                local hrp = getHRP(char)
+                
+                -- INITIAL PORTAL TRIP (Once to get the tool)
+                if hrp then
+                    hrp.CFrame = CFrame.new(-1210, 328, -7)
+                    task.wait(0.4)
+                end
 
                 for i = 1, count do
                     if not annoying then break end
                     
-                    local char = getCharacter(player)
-                    local hrp = getHRP(char)
-                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    char = getCharacter(player)
+                    hrp = getHRP(char)
+                    local tool = player.Backpack:FindFirstChildOfClass("Tool") or char:FindFirstChildOfClass("Tool")
                     
-                    if hum and hum.Health > 0 and hrp then
-                        -- Portal TP
-                        hrp.CFrame = CFrame.new(-1210, 328, -7)
-                        task.wait(0.3)
+                    if hrp and tool then
+                        tool.Parent = char
+                        task.wait(0.05)
                         
-                        -- Tool Check
-                        local tool = player.Backpack:FindFirstChildOfClass("Tool") or char:FindFirstChildOfClass("Tool")
-                        if tool then
-                            tool.Parent = char
-                            task.wait(0.1)
+                        local tChar = annoyTarget.Character
+                        local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
+                        
+                        if tHRP then
+                            -- Drop down from sky to target
+                            hrp.CFrame = tHRP.CFrame * CFrame.new(0, 0, 3)
+                            task.wait(0.05)
+                            tool:Activate()
                             
-                            local tChar = annoyTarget.Character
-                            local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
+                            -- Hit delay
+                            task.wait(0.4)
                             
-                            if tHRP then
-                                -- Hit Target
-                                hrp.CFrame = tHRP.CFrame * CFrame.new(0, 0, 3)
-                                task.wait(0.05)
-                                tool:Activate()
-                                
-                                -- The Delay
-                                task.wait(0.4)
-                                
-                                -- The Escape
-                                hrp.CFrame = hrp.CFrame + Vector3.new(0, 10000, 0)
-                                chatLog("Cycle " .. i .. " complete.")
-                                
-                                -- Cooldown before returning to portal for next hit
-                                task.wait(1.5)
-                            else
-                                break
-                            end
+                            -- Vanish to sky (stays here until next hit)
+                            hrp.CFrame = CFrame.new(hrp.Position.X, 10000, hrp.Position.Z)
+                            chatLog("Hit " .. i .. " complete. Sky-stalling.")
+                            
+                            task.wait(1.5)
+                        else
+                            break
                         end
                     else
-                        task.wait(1)
+                        chatLog("Tool lost or Bot dead. Ending.")
+                        break
                     end
                 end
 
-                -- FINAL SEQUENCE RESET
-                chatLog("Sequence finished. Forcing reset.")
+                -- Reset after sequence
+                chatLog("Sequence finished. Resetting.")
                 local finalChar = player.Character
                 local finalHum = finalChar and finalChar:FindFirstChildOfClass("Humanoid")
                 forceReset(finalHum, finalChar)
@@ -203,7 +204,6 @@ local function processChat(msg, speaker)
         end
 
     elseif cmd == ".smite" and args[2] then
-        -- (Smite logic remains unchanged)
         local smiteTarget = nil
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
@@ -273,4 +273,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do connect(p) end
 Players.PlayerAdded:Connect(connect)
 
-chatLog("Cipher Ready. Sequence Reset Integrated.")
+chatLog("Cipher Ready. Sky-Stall Logic Applied.")
