@@ -1,4 +1,4 @@
--- Cipher Protocol: Unified Farm & Smite (Restored Portal Teleport)
+-- Cipher Protocol: Unified Farm & Smite (Anchor Edition)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -11,8 +11,8 @@ local Workspace = game:GetService("Workspace")
 local primaryOwner = "rizalakasa"
 local targetName = nil 
 local running = false
-local owners = { [primaryOwner] = true }
-local whitelist = { [primaryOwner] = true } 
+local owners = { [primaryOwner:lower()] = true }
+local whitelist = { [primaryOwner:lower()] = true } 
 local smiting = false
 local loopsmiting = nil
 local hiding = true
@@ -54,12 +54,15 @@ local function forceReset()
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     pcall(function()
+        if char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.Anchored = false
+        end
         if hum then hum.Health = 0 end
         char:BreakJoints()
     end)
 end
 
--- COMBAT: SMITE ENGINE (5s Back-and-Forth)
+-- COMBAT: SMITE ENGINE
 local function executeSmite(targetP)
     if not targetP or not targetP.Character or whitelist[targetP.Name:lower()] or smiting then return end
     local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
@@ -87,7 +90,7 @@ local function executeSmite(targetP)
     end
 end
 
--- THE FIXED FARM ENGINE
+-- FARM ENGINE (Portal -> Anchor Strike)
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -98,21 +101,22 @@ task.spawn(function()
         local hum = char and char:FindFirstChildOfClass("Humanoid")
 
         if hum and hum.Health > 0 and hrp then
-            -- STEP 1: Teleport to Portal (PivotTo is more reliable for triggers)
+            -- STEP 1: Portal Jump
             local portal = Workspace.Lobby:FindFirstChild("Teleport2")
             if portal then
                 char:PivotTo(portal.CFrame)
-                task.wait(0.6) -- Sync time for tool/arena transition
+                task.wait(0.6)
             end
 
             local t = Players:FindFirstChild(targetName or "")
             local tHRP = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
 
             if tHRP and hrp.Parent then
-                -- STEP 2: Strike
+                -- STEP 2: Strike & Anchor
+                hrp.Velocity = Vector3.zero
                 char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
+                hrp.Anchored = true -- LOCK POSITION
                 
-                -- Detect Slap Result
                 local timeout = tick() + 1.5
                 repeat 
                     local rag = Workspace:FindFirstChild("bp1frms") and Workspace.bp1frms:FindFirstChild("Ragdolled")
@@ -123,10 +127,10 @@ task.spawn(function()
                     RunService.Heartbeat:Wait()
                 until tick() > timeout or not running
                 
-                -- STEP 3: Clean Reset
+                -- STEP 3: Unanchor & Reset
+                hrp.Anchored = false
                 forceReset()
                 
-                -- Wait for Respawn
                 local respawnStart = tick()
                 repeat task.wait() until player.Character ~= char or tick() - respawnStart > 3
                 task.wait(0.2)
@@ -149,7 +153,8 @@ end)
 -- COMMANDS
 local function processChat(msg, speaker)
     local sName = speaker.Name:lower()
-    if not owners[sName] and sName ~= primaryOwner then return end
+    if not owners[sName] then return end
+    
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
@@ -170,6 +175,18 @@ local function processChat(msg, speaker)
         if p then loopsmiting = p.Name chatLog("Loop Smite: "..p.Name) end
     elseif cmd == ".unloopsmite" then 
         loopsmiting = nil 
+    elseif cmd == ".addowner" and args[2] then
+        local p = findTarget(args[2])
+        if p then 
+            owners[p.Name:lower()] = true 
+            chatLog("Owner Added: "..p.Name)
+        end
+    elseif cmd == ".removeowner" and args[2] then
+        local p = findTarget(args[2])
+        if p and p.Name:lower() ~= primaryOwner:lower() then
+            owners[p.Name:lower()] = nil
+            chatLog("Owner Removed: "..p.Name)
+        end
     elseif cmd == ".rj" then 
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
     elseif cmd == ".reset" then 
@@ -185,4 +202,4 @@ Players.PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(m) processChat(m, p) end)
 end)
 
-chatLog("Cipher Ultimate: Portal Teleport Logic Restored.")
+chatLog("Cipher Ultimate: Anchor Protocol & Owner Management Loaded.")
