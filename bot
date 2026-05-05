@@ -1,4 +1,4 @@
--- Cipher Protocol: Full Unified Farm, Smite, & Annoyance Suite
+-- Cipher Protocol: Full Unified Farm, Smite, & No-Check Annoyance
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -52,7 +52,7 @@ local function findTarget(name)
     return nil
 end
 
--- AUTO-WHITE (Friends)
+-- AUTO-WHITE
 local function checkAndWhite(p)
     if p == player then return end
     if p:IsFriendsWith(player.UserId) or p.Name:lower() == primaryOwner:lower() then
@@ -75,7 +75,7 @@ local function forceReset()
     end)
 end
 
--- COMBAT: SMITE ENGINE (5s Back-and-Forth)
+-- COMBAT: SMITE ENGINE
 local function executeSmite(targetP)
     if not targetP or not targetP.Character or whitelist[targetP.Name:lower()] or smiting then return end
     local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
@@ -103,7 +103,7 @@ local function executeSmite(targetP)
     end
 end
 
--- COMBAT: ANNOY ENGINE (Lobby -> Tool -> Strike)
+-- COMBAT: ANNOY ENGINE (No Tool-Check)
 local function executeAnnoy(targetP)
     if not targetP or not targetP.Character or whitelist[targetP.Name:lower()] or annoying then return end
     local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
@@ -113,15 +113,13 @@ local function executeAnnoy(targetP)
     if tHRP and hrp then
         annoying = true
         hrp.Velocity = Vector3.zero
+        
+        -- 1. Portal Jump
         char:PivotTo(Workspace.Lobby.Teleport2.CFrame)
-        
-        local tool = nil
-        local startTimeWait = tick()
-        repeat 
-            tool = char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
-            task.wait()
-        until tool or tick() - startTimeWait > 2
-        
+        task.wait(0.5) -- Buffer for game to give tool
+
+        -- 2. Expand & Strike
+        local tool = char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
         if tool then
             tool.Parent = char
             local handle = tool:FindFirstChild("Handle")
@@ -137,13 +135,14 @@ local function executeAnnoy(targetP)
             end
         end
 
+        -- 3. Retreat
         char:PivotTo(CFrame.new(stealthPos + Vector3.new(0, 5, 0)))
         task.wait(1.5)
         annoying = false
     end
 end
 
--- MAIN BACKGROUND ENGINE
+-- MAIN ENGINE
 task.spawn(function()
     while true do
         local char = player.Character
@@ -159,7 +158,7 @@ task.spawn(function()
         elseif running and targetName and not smiting and not annoying then
             pcall(function()
                 if hum and hum.Health > 0 and hrp then
-                    hrp.CFrame = CFrame.new(-1210, 328, -8) -- Lobby
+                    hrp.CFrame = CFrame.new(-1210, 328, -8)
                     task.wait(0.3)
                     local t = Players:FindFirstChild(targetName)
                     local tHRP = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
@@ -191,39 +190,42 @@ local function processChat(msg, speaker)
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
-    if cmd == ".farm" then running = true chatLog("Farm On.")
-    elseif cmd == ".stop" then running = false chatLog("Farm Off.")
+    if cmd == ".farm" then running = true chatLog("Farm Engaged.")
+    elseif cmd == ".stop" then running = false chatLog("Farm Stopped.")
     elseif cmd == ".target" and args[2] then
         local p = findTarget(args[2])
-        if p then targetName = p.Name chatLog("Farm Target: "..p.Name) end
+        if p then targetName = p.Name chatLog("Targeting: "..p.Name) end
     elseif cmd == ".smite" and args[2] then
         local p = findTarget(args[2])
         if p then task.spawn(executeSmite, p) end
     elseif cmd == ".loopsmite" and args[2] then
         local p = findTarget(args[2])
         if p then loopsmiting = p.Name chatLog("Loop Smite: "..p.Name) end
-    elseif cmd == ".unloopsmite" then loopsmiting = nil chatLog("Loop Smite Stopped.")
+    elseif cmd == ".unloopsmite" then loopsmiting = nil
     elseif cmd == ".annoy" and args[2] then
         local p = findTarget(args[2])
         local times = tonumber(args[3]) or 1
-        if p then task.spawn(function() for i=1, times do executeAnnoy(p) end forceReset() end) end
+        if p then 
+            task.spawn(function() 
+                for i=1, times do executeAnnoy(p) end 
+                forceReset() 
+            end) 
+        end
     elseif cmd == ".loopannoy" and args[2] then
         local p = findTarget(args[2])
         if p then loopAnnoying = p.Name chatLog("Loop Annoy: "..p.Name) end
-    elseif cmd == ".unloopannoy" then loopAnnoying = nil forceReset() chatLog("Loop Annoy Stopped.")
-    elseif cmd == ".white" and args[2] then
-        local p = findTarget(args[2])
-        if p then whitelist[p.Name:lower()] = true chatLog("Whitelisted: "..p.Name) end
-    elseif cmd == ".stats" then chatLog("Slaps: "..sessionSlaps.." | Uptime: "..math.floor(tick()-startTime).."s")
+    elseif cmd == ".unloopannoy" then 
+        loopAnnoying = nil 
+        forceReset()
     elseif cmd == ".rj" then TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
     elseif cmd == ".reset" then forceReset()
     elseif cmd == ".addowner" and args[2] then
         local p = findTarget(args[2])
-        if p then owners[p.Name:lower()] = true chatLog("Added Owner: "..p.Name) end
+        if p then owners[p.Name:lower()] = true end
     end
 end
 
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Cipher Ultimate: Complete Source Loaded.")
+chatLog("Cipher Ultimate: Reset Fix & No-Check Annoy Ready.")
