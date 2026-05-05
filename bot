@@ -1,4 +1,4 @@
--- Cipher Protocol: Linear High-Stability Farm
+-- Cipher Protocol: High-Speed Bulletproof Farm
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -30,6 +30,7 @@ createStealthPlate()
 
 -- REJOIN ON KICK
 game:GetService("GuiService").ErrorMessageChanged:Connect(function()
+    task.wait(0.5)
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end)
 
@@ -38,74 +39,75 @@ local function chatLog(text) print("[Cipher]: " .. text) end
 local function forceReset()
     local char = player.Character
     if char then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.Anchored = false end
-        char:BreakJoints()
+        pcall(function()
+            if char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.Anchored = false
+            end
+            char:BreakJoints() -- Force instant kill
+        end)
     end
 end
 
--- THE LINEAR FARM SEQUENCE
+-- HIGH-SPEED FARM ENGINE
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        RunService.Heartbeat:Wait() -- Run as fast as physics allows
         
-        -- Only proceed if running, not smiting, and we have a target
         if running and not smiting and targetName then
             local char = player.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChildOfClass("Humanoid")
             
-            -- Ensure we are alive and standing
             if hum and hum.Health > 0 and hrp then
                 
-                -- 1. PORTAL: Get into the game
+                -- 1. PORTAL JUMP
                 local portal = Workspace.Lobby:FindFirstChild("Teleport2")
                 if portal then
                     char:PivotTo(portal.CFrame)
                     
-                    -- Wait until the game actually gives you a glove/teleports you to arena
+                    -- Fast arena detection
                     local startArenaWait = tick()
-                    repeat task.wait() until (hrp.Position.Y < 200) or (tick() - startArenaWait > 2)
-                    task.wait(0.3) -- Safety buffer for server sync
+                    repeat task.wait() until (hrp.Position.Y < 200) or (tick() - startArenaWait > 1.5)
                 end
                 
-                -- 2. TARGET: Find them
+                -- 2. STRIKE
                 local t = Players:FindFirstChild(targetName)
                 local tHRP = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
                 
                 if tHRP and hrp.Parent then
-                    -- Move to target and LOCK
                     hrp.Velocity = Vector3.zero
-                    char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
-                    hrp.Anchored = true
+                    char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3.5))
+                    hrp.Anchored = true -- Lock for hit
                     
-                    -- 3. VALUE CHECK: Wait for slap to register
-                    local timeout = tick() + 2
-                    local slapped = false
+                    -- 3. SMARTER HIT DETECTION (Detects physics change or value)
+                    local timeout = tick() + 0.8 -- Faster timeout
+                    local hit = false
                     repeat 
-                        local rag = Workspace:FindFirstChild("bp1frms") and Workspace.bp1frms:FindFirstChild("Ragdolled")
-                        if rag and rag.Value == true then
-                            slapped = true
+                        local ragFolder = Workspace:FindFirstChild("bp1frms")
+                        local ragValue = ragFolder and ragFolder:FindFirstChild("Ragdolled")
+                        
+                        -- If target flies away or value changes, hit is confirmed
+                        if (ragValue and ragValue.Value == true) or (tHRP.Velocity.Magnitude > 20) then
+                            hit = true
                             sessionSlaps = sessionSlaps + 1
                         end
                         RunService.Heartbeat:Wait()
-                    until slapped or tick() > timeout or not running
+                    until hit or tick() > timeout
                     
-                    -- 4. RESET: Clean the slate
+                    -- 4. INSTANT RESET
                     hrp.Anchored = false
                     forceReset()
                     
-                    -- 5. RESPAWN CHECK: Don't start next loop until old char is gone
-                    local respawnWait = tick()
-                    repeat task.wait() until (not player.Character or player.Character ~= char) or (tick() - respawnWait > 4)
-                    task.wait(0.5) -- Final delay before starting over
+                    -- 5. FAST RESPAWN SYNC
+                    repeat RunService.Heartbeat:Wait() until player.Character ~= char
+                    task.wait(0.1) -- Minimal breathing room to prevent double-teleport
                 end
             end
         end
     end
 end)
 
--- SMITE ENGINE (Keep this separate so it doesn't break the farm logic)
+-- SMITE ENGINE
 local function executeSmite(targetP)
     if not targetP or not targetP.Character or smiting then return end
     local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
@@ -133,7 +135,7 @@ local function executeSmite(targetP)
     end
 end
 
--- CHAT COMMANDS
+-- COMMANDS
 local function processChat(msg, speaker)
     local sName = speaker.Name:lower()
     if not owners[sName] then return end
@@ -141,13 +143,13 @@ local function processChat(msg, speaker)
     local args = string.split(msg:lower(), " ")
     local cmd = args[1]
 
-    if cmd == ".farm" then running = true chatLog("Farm Active.")
-    elseif cmd == ".stop" then running = false chatLog("Farm Stopped.")
+    if cmd == ".farm" then running = true chatLog("Farm: ON")
+    elseif cmd == ".stop" then running = false chatLog("Farm: OFF")
     elseif cmd == ".target" and args[2] then
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(args[2]) or p.DisplayName:lower():find(args[2]) then
                 targetName = p.Name
-                chatLog("Target: " .. targetName)
+                chatLog("Locked: " .. targetName)
                 break
             end
         end
@@ -155,18 +157,18 @@ local function processChat(msg, speaker)
         owners[args[2]:lower()] = true
     elseif cmd == ".removeowner" and args[2] then
         if args[2]:lower() ~= primaryOwner:lower() then owners[args[2]:lower()] = nil end
-    elseif cmd == ".smite" and args[2] then
-        local p = Players:FindFirstChild(targetName) -- Uses farm target if found
+    elseif cmd == ".smite" then
+        local p = Players:FindFirstChild(targetName or "")
         if p then task.spawn(executeSmite, p) end
-    elseif cmd == ".reset" then forceReset()
     elseif cmd == ".rj" then TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+    elseif cmd == ".reset" then forceReset()
     end
 end
 
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
--- STEALTH IDLE
+-- STEALTH
 RunService.Heartbeat:Connect(function()
     if not running and not smiting then
         local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -176,4 +178,4 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-chatLog("Linear Farm Suite Loaded. Use .target [name] then .farm")
+chatLog("Speed-Farm Loaded. Faster transitions active.")
