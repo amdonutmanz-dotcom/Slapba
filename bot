@@ -1,4 +1,4 @@
--- Cipher Protocol: Unified Farm, Stealth, & Advanced Combat (Primary Immunity)
+-- Cipher Protocol: Unified Farm, Stealth, & Advanced Combat (Aura V2)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -11,7 +11,7 @@ local primaryOwner = "rizalakasa"
 local targetName = nil 
 local running = false
 local owners = { [primaryOwner] = true }
-local whitelist = { [primaryOwner] = true } -- Primary is always whitelisted
+local whitelist = { [primaryOwner] = true } 
 local smiting = false
 local loopsmiting = nil
 local auraRange = 0
@@ -38,7 +38,6 @@ for i,v in pairs(getconnections(player.Idled)) do v:Disable() end
 
 local function chatLog(text) print("[Cipher]: " .. text) end
 
--- IMMUNITY CHECK
 local function isImmune(name)
     return name:lower() == primaryOwner:lower()
 end
@@ -54,12 +53,7 @@ local function forceReset(hum, char)
     end)
 end
 
-local function getHRP(pName)
-    local p = Players:FindFirstChild(pName)
-    return p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
-end
-
--- SMITE LOGIC
+-- IMPROVED SMITE EXECUTION
 local function executeSmite(targetP)
     if not targetP or not targetP.Character or whitelist[targetP.Name:lower()] or isImmune(targetP.Name) then return end
     local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
@@ -69,12 +63,15 @@ local function executeSmite(targetP)
     if tHRP and myHRP then
         smiting = true
         local originalPos = myHRP.CFrame
+        
+        -- High-power fling velocity
         local flingLoop = RunService.Heartbeat:Connect(function()
-            myHRP.Velocity = Vector3.new(10000, 10000, 10000)
+            myHRP.Velocity = Vector3.new(20000, 20000, 20000)
         end)
         
-        local endTime = tick() + 0.8
-        while tick() < endTime and tHRP.Parent do
+        -- Flash-smite duration (short but lethal)
+        local endTime = tick() + 0.5
+        while tick() < endTime and tHRP.Parent and myHRP.Parent do
             myChar:PivotTo(tHRP.CFrame)
             RunService.Heartbeat:Wait()
         end
@@ -93,35 +90,45 @@ task.spawn(function()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
 
+        -- 1. LOOP SMITE
         if loopsmiting and not smiting then
             local target = Players:FindFirstChild(loopsmiting)
             if target and not isImmune(target.Name) then
                 executeSmite(target)
             else
-                loopsmiting = nil -- Cancel if target is primary
+                loopsmiting = nil
             end
+
+        -- 2. SMITE AURA (Centered on the player running the script)
         elseif auraRange > 0 and not smiting and hrp then
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= player and p.Character and not whitelist[p.Name:lower()] and not isImmune(p.Name) then
                     local tHRP = p.Character:FindFirstChild("HumanoidRootPart")
-                    if tHRP and (hrp.Position - tHRP.Position).Magnitude <= auraRange then
-                        executeSmite(p)
-                        break
+                    if tHRP then
+                        local dist = (hrp.Position - tHRP.Position).Magnitude
+                        if dist <= auraRange then
+                            executeSmite(p)
+                            break 
+                        end
                     end
                 end
             end
+
+        -- 3. FARM LOGIC
         elseif running and targetName and not smiting then
             pcall(function()
                 if hum and hum.Health > 0 and hrp then
                     hrp.CFrame = CFrame.new(-1210, 328, -8)
                     task.wait(0.3)
-                    local tHRP = getHRP(targetName)
+                    local target = Players:FindFirstChild(targetName)
+                    local tHRP = target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+                    
                     if tHRP then
                         char:PivotTo(tHRP.CFrame * CFrame.new(0, 0, -3))
                         local rag = workspace:FindFirstChild("bp1frms") and workspace.bp1frms:FindFirstChild("Ragdolled")
                         local startW = tick()
                         repeat RunService.Heartbeat:Wait()
-                        until (rag and rag.Value) or (tHRP and (hrp.Position - tHRP.Position).Magnitude > 10) or tick()-startW > 3 or not running
+                        until (rag and rag.Value) or (tHRP and (hrp.Position - tHRP.Position).Magnitude > 12) or tick()-startW > 3 or not running
                         
                         sessionSlaps = sessionSlaps + 1
                         forceReset(hum, char)
@@ -132,11 +139,12 @@ task.spawn(function()
                 end
             end)
         else
+            -- 4. STEALTH IDLE
             if hiding and hrp and (hrp.Position - stealthPos).Magnitude > 100 and not smiting then
                 hrp.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
             end
         end
-        task.wait(0.1)
+        task.wait(0.05) -- Faster loop interval
     end
 end)
 
@@ -177,7 +185,10 @@ local function processChat(msg, speaker)
     elseif cmd == ".unloopsmite" then loopsmiting = nil chatLog("Loop Smite Stopped.")
     elseif cmd == ".smiteaura" and args[2] then
         auraRange = tonumber(args[2]) or 0
-        chatLog("Smite Aura: "..auraRange.." studs.")
+        chatLog("Smite Aura Active: "..auraRange.." studs.")
+    elseif cmd == ".unsmiteaura" then
+        auraRange = 0
+        chatLog("Smite Aura Disabled.")
     elseif cmd == ".hide" then hiding = not hiding chatLog("Hide: "..tostring(hiding))
     elseif cmd == ".stats" then chatLog("Cycles: "..sessionSlaps.." | Runtime: "..math.floor(tick()-startTime).."s")
     elseif cmd == ".watch" then
@@ -204,4 +215,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Cipher Ultimate Loaded. Primary Owner Immune.")
+chatLog("Cipher V2 Aura Fix Loaded. Use .smiteaura [studs] / .unsmiteaura")
