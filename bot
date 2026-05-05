@@ -40,7 +40,7 @@ for i,v in pairs(getconnections(player.Idled)) do v:Disable() end
 
 local function chatLog(text) print("[Cipher]: " .. text) end
 
--- PRECISION FINDER (Exact match priority)
+-- PRECISION FINDER
 local function findTarget(name)
     name = name:lower()
     for _, p in pairs(Players:GetPlayers()) do
@@ -90,9 +90,9 @@ local function executeSmite(targetP)
         
         local strikeEnd = tick() + 5
         while tick() < strikeEnd and tHRP.Parent and myHRP.Parent do
-            myChar:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, 3))
+            myChar:PivotTo(tHRP.CFrame * CFrame.new(0, 2, 3))
             RunService.Heartbeat:Wait()
-            myChar:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
+            myChar:PivotTo(tHRP.CFrame * CFrame.new(0, 2, -3))
             RunService.Heartbeat:Wait()
         end
         
@@ -103,30 +103,38 @@ local function executeSmite(targetP)
     end
 end
 
--- COMBAT: ANNOY ENGINE
+-- COMBAT: ANNOY ENGINE (Lobby -> Tool -> Strike)
 local function executeAnnoy(targetP)
     if not targetP or not targetP.Character or whitelist[targetP.Name:lower()] or annoying then return end
     local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
     local char = player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local tool = char and char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
 
-    if tHRP and hrp and tool then
+    if tHRP and hrp then
         annoying = true
         hrp.Velocity = Vector3.zero
         char:PivotTo(Workspace.Lobby.Teleport2.CFrame)
-        task.wait(0.5)
-
-        local handle = tool:FindFirstChild("Handle")
-        if handle then
-            local oldSize = handle.Size
-            handle.Size = oldSize * 10
-            hrp.Velocity = Vector3.zero
-            char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, 3))
+        
+        local tool = nil
+        local startTimeWait = tick()
+        repeat 
+            tool = char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
+            task.wait()
+        until tool or tick() - startTimeWait > 2
+        
+        if tool then
             tool.Parent = char
-            task.wait(0.1)
-            tool:Activate()
-            handle.Size = oldSize
+            local handle = tool:FindFirstChild("Handle")
+            if handle then
+                local oldSize = handle.Size
+                handle.Size = oldSize * 10
+                hrp.Velocity = Vector3.zero
+                char:PivotTo(tHRP.CFrame * CFrame.new(0, 2, 3))
+                task.wait(0.1)
+                tool:Activate()
+                task.wait(0.1)
+                handle.Size = oldSize
+            end
         end
 
         char:PivotTo(CFrame.new(stealthPos + Vector3.new(0, 5, 0)))
@@ -156,7 +164,7 @@ task.spawn(function()
                     local t = Players:FindFirstChild(targetName)
                     local tHRP = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
                     if tHRP then
-                        char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
+                        char:PivotTo(tHRP.CFrame * CFrame.new(0, 2, -3))
                         local rag = Workspace:FindFirstChild("bp1frms") and Workspace.bp1frms:FindFirstChild("Ragdolled")
                         local startW = tick()
                         repeat RunService.Heartbeat:Wait()
@@ -218,4 +226,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Cipher Ultimate Loaded. All functions operational.")
+chatLog("Cipher Ultimate: Complete Source Loaded.")
