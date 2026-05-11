@@ -14,7 +14,6 @@ local primaryOwners = {
 }
 local targetName = nil 
 local running = false
-local slapDeath = true -- Default is ON
 local owners = { 
     ["rizalakasa"] = true,
     ["ritzwitsplits"] = true 
@@ -128,17 +127,13 @@ task.spawn(function()
         elseif running and targetName and not smiting then
             pcall(function()
                 if hum and hum.Health > 0 and hrp then
-                    -- Reset position if in lobby to enter portal
-                    if hrp.Position.Y > 500 then
-                        hrp.CFrame = CFrame.new(-1210, 328, -8)
-                        task.wait(0.4) 
-                    end
+                    hrp.CFrame = CFrame.new(-1210, 328, -8)
+                    task.wait(0.4) 
                     
                     local t = Players:FindFirstChild(targetName)
                     local tHRP = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
-                    local tHum = t and t.Character and t.Character:FindFirstChildOfClass("Humanoid")
                     
-                    if tHRP and tHum and tHum.Health > 0 then
+                    if tHRP then
                         char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
                         
                         local startW = tick()
@@ -150,18 +145,11 @@ task.spawn(function()
                                 sessionSlaps = sessionSlaps + 1
                             end
                             RunService.Heartbeat:Wait()
-                            -- If slapdeath is off, we keep teleporting to them until they die or time out
-                            if not slapDeath and running and not smiting then
-                                char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
-                            end
-                        until (slapped and slapDeath) or tick() - startW > 1.5 or not running or tHum.Health <= 0
+                        until slashed or tick() - startW > 1.5 or not running
                         
-                        -- Only reset if slapDeath is ON or the target actually died
-                        if slapDeath or tHum.Health <= 0 then
-                            forceReset()
-                            repeat task.wait() until player.Character ~= char or not running
-                            task.wait(0.2)
-                        end
+                        forceReset()
+                        repeat task.wait() until player.Character ~= char or not running
+                        task.wait(0.2)
                     end
                 end
             end)
@@ -183,9 +171,6 @@ local function processChat(msg, speaker)
 
     if cmd == ".farm" then running = true chatLog("Farm Engaged.")
     elseif cmd == ".stop" then running = false chatLog("Farm Stopped.")
-    elseif cmd == ".slapdeath" then
-        if args[2] == "on" then slapDeath = true chatLog("SlapDeath: ON")
-        elseif args[2] == "off" then slapDeath = false chatLog("SlapDeath: OFF") end
     elseif cmd == ".target" and args[2] then
         local p = findTarget(args[2])
         if p then targetName = p.Name chatLog("Targeting: "..p.Name) end
@@ -219,4 +204,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Stability Fixed. Owners: Rizalakasa, RitzWitSplits. .slapdeath ready.")
+chatLog("Stability Fixed. Owners: Rizalakasa, RitzWitSplits.")
