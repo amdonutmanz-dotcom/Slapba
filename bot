@@ -1,4 +1,4 @@
--- Cipher Protocol: High-Stability Base (Freeze Fix)
+-- Cipher Protocol: High-Stability Base (Predictive Smite Edition)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -86,29 +86,46 @@ local function forceReset()
     end)
 end
 
--- COMBAT: SMITE ENGINE
+-- COMBAT: PREDICTIVE ORBIT SMITE ENGINE
 local function executeSmite(targetP)
     if not targetP or not targetP.Character or whitelist[targetP.Name:lower()] or smiting then return end
     local tHRP = targetP.Character:FindFirstChild("HumanoidRootPart")
+    local tHum = targetP.Character:FindFirstChildOfClass("Humanoid")
     local myChar = player.Character
     local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
     
-    if tHRP and myHRP then
+    if tHRP and myHRP and tHum then
         smiting = true
+        
+        -- Physics-based fling force
         local flingLoop = RunService.Heartbeat:Connect(function()
-            myHRP.Velocity = Vector3.new(50000, 50000, 50000)
+            myHRP.Velocity = Vector3.new(0, 50000, 0)
+            myHRP.RotVelocity = Vector3.new(0, 50000, 0)
         end)
         
         local strikeEnd = tick() + 5
-        while tick() < strikeEnd and tHRP.Parent and myHRP.Parent do
-            myChar:PivotTo(tHRP.CFrame * CFrame.new(0, 2, 3))
-            RunService.Heartbeat:Wait()
-            myChar:PivotTo(tHRP.CFrame * CFrame.new(0, 2, -3))
+        local angle = 0
+        
+        while tick() < strikeEnd and tHRP.Parent and myHRP.Parent and tHum.Health > 0 do
+            angle = angle + 0.5 
+            
+            -- Prediction (0.15s lead)
+            local predictionOffset = tHRP.Velocity * 0.15
+            local predictedPos = tHRP.Position + predictionOffset
+            
+            -- Orbit Oscillation
+            local orbitDist = 3 + (math.sin(tick() * 10) * 4) 
+            local offsetX = math.cos(angle) * orbitDist
+            local offsetZ = math.sin(angle) * orbitDist
+            local offsetY = math.sin(tick() * 20) * 2 
+            
+            myChar:PivotTo(CFrame.new(predictedPos + Vector3.new(offsetX, offsetY, offsetZ), predictedPos))
             RunService.Heartbeat:Wait()
         end
         
         flingLoop:Disconnect()
         myHRP.Velocity = Vector3.zero
+        myHRP.RotVelocity = Vector3.zero
         myChar:PivotTo(CFrame.new(stealthPos + Vector3.new(0, 5, 0)))
         smiting = false
     end
@@ -204,4 +221,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Stability Fixed. Owners: Banned4Lag, RitzWitSplits.")
+chatLog("Predictive Suite Loaded. Owners: Banned4Lag, RitzWitSplits.")
