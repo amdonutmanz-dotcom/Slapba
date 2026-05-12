@@ -9,17 +9,17 @@ local Workspace = game:GetService("Workspace")
 
 -- INITIAL STATE
 local primaryOwners = {
-    ["Xevu"] = true,
+    ["banned4lag"] = true,
     ["ritzwitsplits"] = true
 }
 local targetName = nil 
 local running = false
 local owners = { 
-    ["Xevu"] = true,
+    ["banned4lag"] = true,
     ["ritzwitsplits"] = true 
 }
 local whitelist = { 
-    ["Xevu"] = true,
+    ["banned4lag"] = true,
     ["ritzwitsplits"] = true 
 } 
 local smiting = false
@@ -204,4 +204,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Stability Fixed. Owners: Rizalakasa, RitzWitSplits.")
+chatLog("Stability Fixed. Owners: Banned4Lag, RitzWitSplits.")
