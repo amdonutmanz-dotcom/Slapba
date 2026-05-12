@@ -9,17 +9,17 @@ local Workspace = game:GetService("Workspace")
 
 -- INITIAL STATE
 local primaryOwners = {
-    ["rizalakasa"] = true,
+    ["Banned4Lag"] = true,
     ["ritzwitsplits"] = true
 }
 local targetName = nil 
 local running = false
 local owners = { 
-    ["rizalakasa"] = true,
+    ["Banned4Lag"] = true,
     ["ritzwitsplits"] = true 
 }
 local whitelist = { 
-    ["rizalakasa"] = true,
+    ["Banned4Lag"] = true,
     ["ritzwitsplits"] = true 
 } 
 local smiting = false
