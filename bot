@@ -1,4 +1,4 @@
--- Cipher Protocol: Full Integrated Suite (100K Smite + Requested Farm Logic)
+-- Cipher Protocol: Full Integrated Suite (Reset-Fix Edition)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -59,10 +59,21 @@ local function findTarget(name)
     return nil
 end
 
+-- AGGRESSIVE RESET
 local function forceReset()
     local char = player.Character
     if not char then return end
-    pcall(function() char:BreakJoints() end)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    pcall(function()
+        if hum then
+            hum.Health = 0 -- Kill via health
+        end
+        char:BreakJoints() -- Kill via physics
+        -- Manual neck break backup
+        if char:FindFirstChild("Head") and char.Head:FindFirstChild("Neck") then
+            char.Head.Neck:Destroy()
+        end
+    end)
 end
 
 -- COMBAT: 100K PREDICTIVE SMITE
@@ -99,7 +110,7 @@ local function executeSmite(targetP)
     end
 end
 
--- MAIN ENGINE (REVERTED FARM LOGIC)
+-- MAIN ENGINE (YOUR FARM LOGIC)
 task.spawn(function()
     while true do
         local char = player.Character
@@ -133,6 +144,7 @@ task.spawn(function()
                         until slashed or tick() - startW > 1.5 or not running
                         
                         forceReset()
+                        -- Wait for the character to actually be gone/replaced
                         repeat task.wait() until player.Character ~= char or not running
                         task.wait(0.2)
                     end
@@ -176,4 +188,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(m) processChat(m, p) end) end
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(m) processChat(m, p) end) end)
 
-chatLog("Farm Logic Restored. Owners: Banned4Lag, RitzWitSplits.")
+chatLog("Reset logic fortified. Owners: Banned4Lag, RitzWitSplits.")
