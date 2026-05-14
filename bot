@@ -1,4 +1,4 @@
--- Cipher Protocol: Full Suite + Owner Management + Proximity Shield
+-- tuff ahh update
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -130,7 +130,6 @@ task.spawn(function()
     end
 end)
 
--- MAIN ENGINE
 task.spawn(function()
     while true do
         local char = player.Character
@@ -164,6 +163,7 @@ task.spawn(function()
                         until slashed or tick() - startW > 1.5 or not running
                         
                         forceReset()
+                        -- Wait for the character to actually be gone/replaced
                         repeat task.wait() until player.Character ~= char or not running
                         task.wait(0.2)
                     end
