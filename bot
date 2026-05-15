@@ -128,19 +128,28 @@ task.spawn(function()
 
         if loopsmiting and not smiting then
             local t = Players:FindFirstChild(loopsmiting)
-            if t then executeSmite(t, 4) else loopsmiting = nil end
+            if t then 
+                executeSmite(t, 4) 
+            else 
+                loopsmiting = nil 
+            end
+            
         elseif running and targetName and not smiting then
             pcall(function()
                 if hum and hum.Health > 0 and hrp then
+                    -- Teleport to starting position
                     hrp.CFrame = CFrame.new(-1210, 328, -8)
                     task.wait(0.4) 
                     
+                    -- Get target (fresh reference)
                     local t = Players:FindFirstChild(targetName)
                     local tHRP = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
                     
                     if tHRP then
+                        -- Teleport to target
                         char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
                         
+                        -- Wait for hit detection
                         local startW = tick()
                         local slashed = false
                         repeat 
@@ -152,17 +161,24 @@ task.spawn(function()
                             RunService.Heartbeat:Wait()
                         until slashed or tick() - startW > 1.5 or not running
                         
+                        -- Reset and wait for new character
                         forceReset()
                         repeat task.wait() until player.Character ~= char or not running
                         task.wait(0.2)
                     end
                 end
             end)
-        else
-            if hiding and hrp and (hrp.Position - stealthPos).Magnitude > 100 and not smiting then
-                hrp.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
-            end
+            -- Skip the hiding check after an attack attempt
+            task.wait(0.01)
+            continue
+            
         end
+        
+        -- Only check hiding position when not in combat
+        if hiding and hrp and (hrp.Position - stealthPos).Magnitude > 100 and not smiting then
+            hrp.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
+        end
+        
         task.wait(0.01)
     end
 end)
