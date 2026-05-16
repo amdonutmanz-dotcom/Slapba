@@ -1,4 +1,4 @@
--- Cipher Protocol: Owner-Centered Shield + Wipe + LoopSmite + Original Farm
+-- epic annoy feature
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -20,6 +20,7 @@ local shieldRadius = 10
 local shieldActive = false
 local shieldOwner = nil
 local sessionSlaps = 0
+local annoyTarget = nil
 
 -- STEALTH BASEPLATE
 local stealthPos = Vector3.new(0, 10000, 0)
@@ -94,6 +95,45 @@ local function startWipe()
             task.wait(0.1)
         end
     end
+end
+
+-- ANNOY LOGIC
+local function startAnnoy(targetP)
+    if not targetP or not targetP.Character then return end
+    
+    local stickClick = Workspace:FindFirstChild("Lobby") and Workspace.Lobby:FindFirstChild("Stick") and Workspace.Lobby.Stick:FindFirstChild("ClickDetector")
+    if not stickClick then chatLog("Stick not found!") return end
+    
+    while annoyTarget == targetP.Name and targetP.Character do
+        local myChar = player.Character
+        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local tChar = targetP.Character
+        local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
+        local ragdoll = tChar and tChar:FindFirstChild("Ragdolled")
+        
+        if myHRP and tHRP and ragdoll then
+            if ragdoll.Value == false then
+                -- Teleport below player
+                myHRP.CFrame = tHRP.CFrame * CFrame.new(0, -20, 0)
+                task.wait(0.1)
+                
+                -- Click stick
+                pcall(function() game:GetService("RunService").Heartbeat:Wait() end)
+                game:GetService("UserInputService"):FireEvent(stickClick.Parent, stickClick)
+                
+                -- Hit with GeneralHit
+                task.wait(0.05)
+                local hitRemote = Workspace:FindFirstChild("GeneralHit") or game:GetService("ReplicatedStorage"):FindFirstChild("GeneralHit")
+                if hitRemote then hitRemote:FireServer(tChar:FindFirstChild("Torso") or tHRP) end
+                
+                -- Teleport back to stealth
+                task.wait(0.1)
+                myHRP.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
+            end
+        end
+        task.wait(0.2)
+    end
+    chatLog("Stopped annoying " .. targetP.Name)
 end
 
 -- DYNAMIC SHIELD (Centered on Command Runner)
@@ -211,11 +251,32 @@ local function processChat(msg, speaker)
         if p then task.spawn(executeSmite, p) end
     elseif cmd == ".loopsmite" and args[2] then
         local p = findTarget(args[2])
-        if p then loopsmiting = p.Name end
+        if p and not whitelist[p.Name:lower()] then loopsmiting = p.Name end
     elseif cmd == ".unloopsmite" then loopsmiting = nil
     elseif cmd == ".addowner" and args[2] then
         local p = findTarget(args[2])
-        if p then owners[p.Name:lower()] = true end
+        if p then 
+            owners[p.Name:lower()] = true
+            chatLog(p.Name .. " added to owners.")
+        end
+    elseif cmd == ".removeowner" and args[2] then
+        local p = findTarget(args[2])
+        if p then 
+            owners[p.Name:lower()] = nil
+            chatLog(p.Name .. " removed from owners.")
+        end
+    elseif cmd == ".annoy" and args[2] then
+        local p = findTarget(args[2])
+        if p then
+            annoyTarget = p.Name
+            chatLog("Annoying " .. p.Name .. ". Use .unannoy to stop.")
+            task.spawn(startAnnoy, p)
+        end
+    elseif cmd == ".unannoy" then
+        if annoyTarget then
+            chatLog("Stopped annoying.")
+            annoyTarget = nil
+        end
     elseif cmd == ".rj" then TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
     elseif cmd == ".reset" then forceReset() end
 end
