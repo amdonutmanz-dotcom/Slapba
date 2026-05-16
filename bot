@@ -1,4 +1,4 @@
--- BE SLOWERRRR
+-- rizalaasaolsasasoNGIG
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -115,7 +115,7 @@ local function startAnnoy(targetP)
             if ragdoll.Value == false then
                 -- Teleport 10 studs below player
                 myHRP.CFrame = tHRP.CFrame * CFrame.new(0, -10, 0)
-                task.wait(0.3)
+                task.wait(0.8)
                 
                 -- Click stick via ClickDetector
                 pcall(function()
@@ -125,7 +125,7 @@ local function startAnnoy(targetP)
                     end
                 end)
                 
-                task.wait(1.0)
+                task.wait(0.8)
                 
                 -- Hit with GeneralHit
                 pcall(function()
@@ -139,11 +139,11 @@ local function startAnnoy(targetP)
                 end)
                 
                 -- Teleport back to stealth
-                task.wait(0.3)
+                task.wait(1)
                 myHRP.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
             end
         end
-        task.wait(0.5)
+        task.wait(1)
     end
     chatLog("Stopped annoying " .. targetP.Name)
 end
