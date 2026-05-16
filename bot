@@ -1,4 +1,4 @@
--- digga digga digga update mf i love specimen carcking
+-- BE SLOWERRRR
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -115,7 +115,7 @@ local function startAnnoy(targetP)
             if ragdoll.Value == false then
                 -- Teleport 10 studs below player
                 myHRP.CFrame = tHRP.CFrame * CFrame.new(0, -10, 0)
-                task.wait(0.05)
+                task.wait(0.3)
                 
                 -- Click stick via ClickDetector
                 pcall(function()
@@ -125,27 +125,25 @@ local function startAnnoy(targetP)
                     end
                 end)
                 
-                task.wait(0.08)
+                task.wait(1.0)
                 
-                -- Hit with GeneralHit - try multiple parts
+                -- Hit with GeneralHit
                 pcall(function()
                     local hitRemote = game:GetService("ReplicatedStorage"):FindFirstChild("GeneralHit")
                     if hitRemote then
                         local hitPart = tChar:FindFirstChild("Torso") or tChar:FindFirstChild("HumanoidRootPart") or tChar:FindFirstChildOfClass("BasePart")
                         if hitPart then
                             hitRemote:FireServer(hitPart)
-                            task.wait(0.02)
-                            hitRemote:FireServer(hitPart) -- Double hit for reliability
                         end
                     end
                 end)
                 
                 -- Teleport back to stealth
-                task.wait(0.08)
+                task.wait(0.3)
                 myHRP.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
             end
         end
-        task.wait(0.3)
+        task.wait(0.5)
     end
     chatLog("Stopped annoying " .. targetP.Name)
 end
