@@ -1,4 +1,4 @@
--- beettereoppek
+-- digga digga digga update mf i love specimen carcking
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -111,11 +111,11 @@ local function startAnnoy(targetP)
         local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
         local ragdoll = tChar and tChar:FindFirstChild("Ragdolled")
         
-        if myHRP and tHRP and ragdoll then
+        if myChar and myHRP and tChar and tHRP and ragdoll then
             if ragdoll.Value == false then
-                -- Teleport below player
-                myHRP.CFrame = tHRP.CFrame * CFrame.new(0, -20, 0)
-                task.wait(0.1)
+                -- Teleport 10 studs below player
+                myHRP.CFrame = tHRP.CFrame * CFrame.new(0, -10, 0)
+                task.wait(0.05)
                 
                 -- Click stick via ClickDetector
                 pcall(function()
@@ -125,21 +125,27 @@ local function startAnnoy(targetP)
                     end
                 end)
                 
-                -- Hit with GeneralHit
-                task.wait(0.05)
+                task.wait(0.08)
+                
+                -- Hit with GeneralHit - try multiple parts
                 pcall(function()
                     local hitRemote = game:GetService("ReplicatedStorage"):FindFirstChild("GeneralHit")
-                    if hitRemote then 
-                        hitRemote:FireServer(tChar:FindFirstChild("Torso") or tHRP)
+                    if hitRemote then
+                        local hitPart = tChar:FindFirstChild("Torso") or tChar:FindFirstChild("HumanoidRootPart") or tChar:FindFirstChildOfClass("BasePart")
+                        if hitPart then
+                            hitRemote:FireServer(hitPart)
+                            task.wait(0.02)
+                            hitRemote:FireServer(hitPart) -- Double hit for reliability
+                        end
                     end
                 end)
                 
                 -- Teleport back to stealth
-                task.wait(0.1)
+                task.wait(0.08)
                 myHRP.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
             end
         end
-        task.wait(0.2)
+        task.wait(0.3)
     end
     chatLog("Stopped annoying " .. targetP.Name)
 end
