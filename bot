@@ -1,4 +1,4 @@
--- rizalaasaolsasasoNGIG
+-- smash your bunsz
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -187,51 +187,97 @@ task.spawn(function()
             end
             
         elseif running and targetName and not smiting then
+            -- Only proceed if we have a valid character
+            if not (char and hum and hrp and hum.Health > 0) then
+                task.wait(0.5)
+                continue
+            end
+            
             pcall(function()
-                if hum and hum.Health > 0 and hrp then
-                    -- Teleport to starting position
-                    hrp.CFrame = CFrame.new(-1210, 328, -8)
-                    task.wait(0.4) 
-                    
-                    -- Get target (fresh reference)
-                    local t = Players:FindFirstChild(targetName)
-                    local tHRP = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
-                    
-                    if tHRP then
-                        -- Teleport to target
-                        char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
-                        
-                        -- Wait for hit detection
-                        local startW = tick()
-                        local slashed = false
-                        repeat 
-                            local rag = Workspace:FindFirstChild("bp1frms") and Workspace.bp1frms:FindFirstChild("Ragdolled")
-                            if (rag and rag.Value) or (tHRP.Velocity.Magnitude > 25) then
-                                slashed = true
-                                sessionSlaps = sessionSlaps + 1
-                            end
-                            RunService.Heartbeat:Wait()
-                        until slashed or tick() - startW > 1.5 or not running
-                        
-                        -- Reset and wait for new character
-                        forceReset()
-                        repeat task.wait() until player.Character ~= char or not running
-                        task.wait(0.2)
+                -- Get target
+                local t = Players:FindFirstChild(targetName)
+                if not t or not t.Character then
+                    task.wait(0.2)
+                    return
+                end
+                
+                local tChar = t.Character
+                local tHRP = tChar:FindFirstChild("HumanoidRootPart")
+                if not tHRP then
+                    task.wait(0.2)
+                    return
+                end
+                
+                -- Check if target is in arena
+                local isInArena = tChar:FindFirstChild("isInArena")
+                if not isInArena or not isInArena.Value then
+                    -- Target not in arena, try to go through portal
+                    local portal = Workspace:FindFirstChild("Arena") and Workspace.Arena:FindFirstChild("Portal")
+                    if portal then
+                        chatLog("Entering arena...")
+                        hrp.CFrame = portal.CFrame + portal.CFrame.LookVector * 5
+                        task.wait(1)
+                        hrp.CFrame = portal.CFrame
+                        task.wait(2)
                     end
+                    task.wait(0.5)
+                    return
+                end
+                
+                -- Teleport to starting position in arena
+                local startPos = CFrame.new(-1210, 328, -8)
+                hrp.CFrame = startPos
+                task.wait(0.5)
+                
+                -- Get fresh target reference
+                t = Players:FindFirstChild(targetName)
+                if not t or not t.Character then return end
+                tChar = t.Character
+                tHRP = tChar:FindFirstChild("HumanoidRootPart")
+                if not tHRP then return end
+                
+                -- Teleport to target
+                char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
+                task.wait(0.3)
+                
+                -- Wait for hit to register
+                local hitStart = tick()
+                local hit = false
+                repeat 
+                    -- Check if target is ragdolled
+                    local rag = tChar:FindFirstChild("Ragdolled")
+                    if rag and rag.Value then
+                        hit = true
+                        sessionSlaps = sessionSlaps + 1
+                    end
+                    
+                    -- Check if target velocity is high (took damage)
+                    if tHRP and tHRP.Velocity.Magnitude > 20 then
+                        hit = true
+                        sessionSlaps = sessionSlaps + 1
+                    end
+                    
+                    task.wait(0.05)
+                until hit or tick() - hitStart > 2 or not running
+                
+                -- Reset character
+                if char and char.Parent then
+                    forceReset()
+                    -- Wait for respawn
+                    local respawnStart = tick()
+                    repeat task.wait(0.1) until player.Character ~= char or tick() - respawnStart > 5 or not running
+                    task.wait(0.3)
                 end
             end)
-            -- Skip the hiding check after an attack attempt
-            task.wait(0.01)
-            continue
+            task.wait(0.1)
             
+        else
+            -- Hide in stealth position
+            if hiding and hrp and (hrp.Position - stealthPos).Magnitude > 100 and not smiting then
+                hrp.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
+            end
+            task.wait(0.2)
         end
-        
-        -- Only check hiding position when not in combat
-        if hiding and hrp and (hrp.Position - stealthPos).Magnitude > 100 and not smiting then
-            hrp.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
-        end
-        
-        task.wait(0.01)
     end
 end)
 
