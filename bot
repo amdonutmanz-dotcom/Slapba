@@ -1,4 +1,4 @@
--- screw claude i swear
+-- nvm claude is my pookie
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -177,7 +177,7 @@ task.spawn(function()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
- 
+
         if loopsmiting and not smiting then
             local t = Players:FindFirstChild(loopsmiting)
             if t then 
@@ -240,26 +240,19 @@ task.spawn(function()
                     -- Teleport to target
                     char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
                     
-                    -- Check if hit - IMPROVED RAGDOLL DETECTION
-                    local tHum = tChar:FindFirstChildOfClass("Humanoid")
-                    
-                    -- Method 1: Check BoolValue
+                    -- Check if hit - improved ragdoll detection
                     local rag = tChar:FindFirstChild("Ragdolled")
-                    if rag and rag:IsA("BoolValue") and rag.Value == true then
-                        hit = true
-                        sessionSlaps = sessionSlaps + 1
-                        break
+                    if rag then
+                        if rag.Value == true then
+                            hit = true
+                            sessionSlaps = sessionSlaps + 1
+                            break
+                        end
                     end
                     
-                    -- Method 2: Check Humanoid state
-                    if tHum and tHum:GetState() == Enum.HumanoidStateType.Ragdoll then
-                        hit = true
-                        sessionSlaps = sessionSlaps + 1
-                        break
-                    end
-                    
-                    -- Method 3: Check if health is 0
-                    if tHum and tHum.Health <= 0 then
+                    -- Also check humanoid state
+                    local hum = tChar:FindFirstChildOfClass("Humanoid")
+                    if hum and hum:GetState() == Enum.HumanoidStateType.Ragdoll then
                         hit = true
                         sessionSlaps = sessionSlaps + 1
                         break
