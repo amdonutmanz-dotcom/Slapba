@@ -1,4 +1,4 @@
--- nvm claude is my pookie
+-- nvm fuck claude
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -233,38 +233,31 @@ task.spawn(function()
                 tHRP = tChar:FindFirstChild("HumanoidRootPart")
                 if not tHRP then return end
                 
-                -- Keep teleporting to target until hit or timeout
+                -- Keep teleporting to target until ragdolled or timeout
                 local hitStart = tick()
                 local hit = false
-                while not hit and tick() - hitStart < 3 do
-                    -- Teleport to target
+                while not hit and tick() - hitStart < 4 do
+                    -- Teleport in front of target
                     char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
                     
-                    -- Check if hit - improved ragdoll detection
-                    local rag = tChar:FindFirstChild("Ragdolled")
-                    if rag then
-                        if rag.Value == true then
+                    -- Check workspace.bp1frms.Ragdolled
+                    local bp1frms = Workspace:FindFirstChild("bp1frms")
+                    if bp1frms then
+                        local ragdolled = bp1frms:FindFirstChild("Ragdolled")
+                        if ragdolled and ragdolled.Value == true then
                             hit = true
                             sessionSlaps = sessionSlaps + 1
                             break
                         end
                     end
                     
-                    -- Also check humanoid state
-                    local hum = tChar:FindFirstChildOfClass("Humanoid")
-                    if hum and hum:GetState() == Enum.HumanoidStateType.Ragdoll then
-                        hit = true
-                        sessionSlaps = sessionSlaps + 1
-                        break
-                    end
-                    
                     task.wait(0.1)
                 end
                 
-                -- Reset character immediately
+                -- Reset character
                 if char and char.Parent then
                     forceReset()
-                    -- Wait for respawn (faster)
+                    -- Wait for respawn
                     local respawnStart = tick()
                     repeat task.wait(0.05) until player.Character ~= char or tick() - respawnStart > 4 or not running
                     task.wait(0.15)
