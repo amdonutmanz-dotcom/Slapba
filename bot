@@ -1,4 +1,4 @@
--- farmussy fixypants
+-- scrowfel
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -236,25 +236,29 @@ task.spawn(function()
                 -- Keep teleporting to target until hit or timeout
                 local hitStart = tick()
                 local hit = false
-                while not hit and tick() - hitStart < 1.5 do
+                while not hit and tick() - hitStart < 3 do
                     -- Teleport to target
                     char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
                     
-                    -- Check if hit
+                    -- Check if hit - improved ragdoll detection
                     local rag = tChar:FindFirstChild("Ragdolled")
-                    if rag and rag.Value then
+                    if rag then
+                        if rag.Value == true then
+                            hit = true
+                            sessionSlaps = sessionSlaps + 1
+                            break
+                        end
+                    end
+                    
+                    -- Also check humanoid state
+                    local hum = tChar:FindFirstChildOfClass("Humanoid")
+                    if hum and hum:GetState() == Enum.HumanoidStateType.Ragdoll then
                         hit = true
                         sessionSlaps = sessionSlaps + 1
                         break
                     end
                     
-                    if tHRP and tHRP.Velocity.Magnitude > 20 then
-                        hit = true
-                        sessionSlaps = sessionSlaps + 1
-                        break
-                    end
-                    
-                    task.wait(0.08)
+                    task.wait(0.1)
                 end
                 
                 -- Reset character immediately
@@ -262,8 +266,8 @@ task.spawn(function()
                     forceReset()
                     -- Wait for respawn (faster)
                     local respawnStart = tick()
-                    repeat task.wait(0.05) until player.Character ~= char or tick() - respawnStart > 3 or not running
-                    task.wait(0.1)
+                    repeat task.wait(0.05) until player.Character ~= char or tick() - respawnStart > 4 or not running
+                    task.wait(0.15)
                 end
             end)
             task.wait(0.05)
