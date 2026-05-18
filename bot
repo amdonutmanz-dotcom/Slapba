@@ -1,4 +1,4 @@
--- smash your bunsz
+-- Cipher Protocol: Owner-Centered Shield + Wipe + LoopSmite + Original Farm
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -197,14 +197,12 @@ task.spawn(function()
                 -- Get target
                 local t = Players:FindFirstChild(targetName)
                 if not t or not t.Character then
-                    task.wait(0.2)
                     return
                 end
                 
                 local tChar = t.Character
                 local tHRP = tChar:FindFirstChild("HumanoidRootPart")
                 if not tHRP then
-                    task.wait(0.2)
                     return
                 end
                 
@@ -216,18 +214,17 @@ task.spawn(function()
                     if portal then
                         chatLog("Entering arena...")
                         hrp.CFrame = portal.CFrame + portal.CFrame.LookVector * 5
-                        task.wait(1)
+                        task.wait(0.8)
                         hrp.CFrame = portal.CFrame
-                        task.wait(2)
+                        task.wait(1.5)
                     end
-                    task.wait(0.5)
                     return
                 end
                 
                 -- Teleport to starting position in arena
                 local startPos = CFrame.new(-1210, 328, -8)
                 hrp.CFrame = startPos
-                task.wait(0.5)
+                task.wait(0.2)
                 
                 -- Get fresh target reference
                 t = Players:FindFirstChild(targetName)
@@ -238,9 +235,9 @@ task.spawn(function()
                 
                 -- Teleport to target
                 char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
-                task.wait(0.3)
+                task.wait(0.15)
                 
-                -- Wait for hit to register
+                -- Wait for hit to register (reduced timeout)
                 local hitStart = tick()
                 local hit = false
                 repeat 
@@ -257,26 +254,26 @@ task.spawn(function()
                         sessionSlaps = sessionSlaps + 1
                     end
                     
-                    task.wait(0.05)
-                until hit or tick() - hitStart > 2 or not running
+                    task.wait(0.02)
+                until hit or tick() - hitStart > 1 or not running
                 
-                -- Reset character
+                -- Reset character immediately
                 if char and char.Parent then
                     forceReset()
-                    -- Wait for respawn
+                    -- Wait for respawn (faster)
                     local respawnStart = tick()
-                    repeat task.wait(0.1) until player.Character ~= char or tick() - respawnStart > 5 or not running
-                    task.wait(0.3)
+                    repeat task.wait(0.05) until player.Character ~= char or tick() - respawnStart > 3 or not running
+                    task.wait(0.1)
                 end
             end)
-            task.wait(0.1)
+            task.wait(0.05)
             
         else
             -- Hide in stealth position
             if hiding and hrp and (hrp.Position - stealthPos).Magnitude > 100 and not smiting then
                 hrp.CFrame = CFrame.new(stealthPos + Vector3.new(0, 5, 0))
             end
-            task.wait(0.2)
+            task.wait(0.1)
         end
     end
 end)
