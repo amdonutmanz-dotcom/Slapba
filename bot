@@ -1,4 +1,4 @@
--- Cipher Protocol: Owner-Centered Shield + Wipe + LoopSmite + Original Farm
+-- farmussy fixypants
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -224,7 +224,7 @@ task.spawn(function()
                 -- Teleport to starting position in arena
                 local startPos = CFrame.new(-1210, 328, -8)
                 hrp.CFrame = startPos
-                task.wait(0.2)
+                task.wait(0.4)
                 
                 -- Get fresh target reference
                 t = Players:FindFirstChild(targetName)
@@ -233,29 +233,29 @@ task.spawn(function()
                 tHRP = tChar:FindFirstChild("HumanoidRootPart")
                 if not tHRP then return end
                 
-                -- Teleport to target
-                char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
-                task.wait(0.15)
-                
-                -- Wait for hit to register (reduced timeout)
+                -- Keep teleporting to target until hit or timeout
                 local hitStart = tick()
                 local hit = false
-                repeat 
-                    -- Check if target is ragdolled
+                while not hit and tick() - hitStart < 1.5 do
+                    -- Teleport to target
+                    char:PivotTo(tHRP.CFrame * CFrame.new(0, 1.5, -3))
+                    
+                    -- Check if hit
                     local rag = tChar:FindFirstChild("Ragdolled")
                     if rag and rag.Value then
                         hit = true
                         sessionSlaps = sessionSlaps + 1
+                        break
                     end
                     
-                    -- Check if target velocity is high (took damage)
                     if tHRP and tHRP.Velocity.Magnitude > 20 then
                         hit = true
                         sessionSlaps = sessionSlaps + 1
+                        break
                     end
                     
-                    task.wait(0.02)
-                until hit or tick() - hitStart > 1 or not running
+                    task.wait(0.08)
+                end
                 
                 -- Reset character immediately
                 if char and char.Parent then
